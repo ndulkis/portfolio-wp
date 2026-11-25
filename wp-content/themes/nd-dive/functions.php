@@ -646,6 +646,50 @@ add_action( 'admin_init', function () {
 add_filter( 'tiny_mce_plugins', fn( $plugins ) => array_diff( $plugins, array( 'wpemoji' ) ) );
 add_filter( 'emoji_svg_url', '__return_false' ); // Drops the s.w.org dns-prefetch too.
 
+/* ── Hardening: don't hand bots usernames, XML-RPC or the WordPress version. ── */
+
+// Usernames: no author archives (the theme has none) — /?author=2 would otherwise redirect to /author/<login>/.
+add_action( 'template_redirect', function () {
+	if ( is_author() || isset( $_GET['author'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		wp_safe_redirect( home_url( '/' ), 301 );
+		exit;
+	}
+}, 1 );
+// …nor in the REST API (public /wp/v2/users lists every login name), the sitemap, or oEmbed data.
+add_filter( 'rest_endpoints', function ( $endpoints ) {
+	if ( ! current_user_can( 'list_users' ) ) {
+		unset( $endpoints['/wp/v2/users'], $endpoints['/wp/v2/users/(?P<id>[\d]+)'] );
+	}
+	return $endpoints;
+} );
+add_filter( 'wp_sitemaps_add_provider', fn( $provider, $name ) => 'users' === $name ? false : $provider, 10, 2 );
+add_filter( 'oembed_response_data', fn( $data ) => array_diff_key( $data, array( 'author_name' => 1, 'author_url' => 1 ) ) );
+// Same message for an unknown username/email as for a wrong password (other login messages, e.g. lockouts, are left alone).
+add_filter( 'authenticate', function ( $user ) {
+	if ( is_wp_error( $user ) && array_intersect( $user->get_error_codes(), array( 'invalid_username', 'invalid_email', 'incorrect_password' ) ) ) {
+		return new WP_Error( 'incorrect_password', '<strong>Error:</strong> Wrong username or password.' );
+	}
+	return $user;
+}, 99 );
+
+// XML-RPC (old remote-publishing API, a favourite for password guessing and pingback abuse): refused outright,
+// including the built-in system.multicall that batches guesses.
+add_action( 'init', function () {
+	if ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) {
+		status_header( 403 );
+		exit;
+	}
+} );
+add_filter( 'wp_headers', function ( $headers ) {
+	unset( $headers['X-Pingback'] );
+	return $headers;
+} );
+remove_action( 'wp_head', 'rsd_link' );
+
+// Don't advertise the WordPress version.
+remove_action( 'wp_head', 'wp_generator' );
+add_filter( 'the_generator', '__return_empty_string' );
+
 /* ── No comments: the theme never shows them, so don't collect them (or their spam). ── */
 add_filter( 'comments_open', '__return_false' );
 add_filter( 'pings_open', '__return_false' );

@@ -12,7 +12,7 @@ lando seed      # re-run just the content seed
 
 Site: https://portfolio-wp.lndo.site · admin: `admin` / `admin` (local only). WP-CLI: `lando wp …`.
 
-The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/nd-dive/`, `scripts/`, `docs/`, `.lando.yml`. WordPress core, `wp-config.php` and uploads stay local.
+The repo tracks only our code and the plugins (`.gitignore` is a whitelist): `wp-content/themes/nd-dive/`, `wp-content/plugins/`, `scripts/`, `docs/`, `.lando.yml`. WordPress core, `wp-config.php` and uploads stay local.
 
 ## Design source of truth
 
@@ -64,6 +64,16 @@ The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/
 - **Editor:** the block editor is off for every type (`use_block_editor_for_post_type`); everything is edited on the classic screen with fields in boxes. The post body editor (TinyMCE) loads `style.css` + `editor-style.css` so drafts look like the site.
 - `scripts/seed.php` holds all current real content (from the old site's `src/data/*`, copied to `docs/content-source/`).
 
+## Plugins & security
+
+- **Plugins are tracked in git** (`wp-content/plugins/`), so the live site is exactly what's in the repo. `lando install` activates whatever is there. The theme itself must keep working with no plugins.
+- **Installed:** Two Factor 0.17.0 (2FA: set it up per user in Users → Profile, and save the backup codes) and Limit Login Attempts Reloaded 3.4.7 (locks an IP out for 20 min after 4 failed logins; its paid "cloud" features are optional and unused). Check files against wordpress.org with `lando wp plugin verify-checksums --all`.
+- **Cloudflare Turnstile** (`wp-content/mu-plugins/nd-turnstile.php`, must-use, tracked): a human check on the login and lost-password forms, verified with Cloudflare before login. On only when `ND_TURNSTILE_SITE_KEY` and `ND_TURNSTILE_SECRET` are in `wp-config.php`: setup puts Cloudflare's always-pass **test** keys there locally (the widget says "For testing only"); the live site gets real keys from Cloudflare → Turnstile (never commit them). Fails closed; a failed check counts as a failed login for the rate limiter. Locked out on the live site? Remove the two constants.
+- **Locked out locally?** Everything reaches Lando through one proxy IP, so a few bad logins lock out the whole local site. Clear it: `lando wp option update limit_login_lockouts '[]' --format=json` (same for `limit_login_retries`). On the live site behind Cloudflare/a proxy, set the plugin's "Trusted IP origins" to the forwarded header, or it will see every visitor as the proxy.
+- **Updating (plugins and core): always through a branch.** `git switch -c update/<what>` → `lando wp plugin update --all` (see what's waiting with `lando wp plugin list --update=available`, or the local dashboard) → click through the site → commit → push → deploy. Never update on the live site: the next deploy would put the old version back.
+- **Live site must block dashboard updates and file edits** (part of the deploy, in its `wp-config.php`): `define( 'DISALLOW_FILE_MODS', true );` (also hides update notices there, so check updates locally) and leave plugin auto-updates off.
+- **Theme hardening** (functions.php, "Hardening"): no author archives (`?author=` → home), REST `/wp/v2/users` hidden from visitors, no users sitemap, no author in oEmbed, one login error for wrong username or password, XML-RPC refused (403), no WordPress version in the page. Login rate limiting / 2FA come from plugins; a firewall (host or Cloudflare) belongs to the deploy.
+
 ## Still open (placeholders shown as `[brackets]`)
 
 - About: where Nathan grew up, the moment he got hooked, city, hobbies.
@@ -74,6 +84,6 @@ The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/
 
 ## Conventions
 
-- Keep it a classic PHP theme, no build step, no plugins required (meta boxes are native). Don't add ACF/page builders without asking.
+- Keep it a classic PHP theme, no build step; the theme never requires a plugin (meta boxes are native), plugins are only add-ons like security. Don't add ACF/page builders without asking.
 - Escape all output (`esc_html`, `esc_url`, `esc_attr`); sanitize meta on save.
 - Design changes go to the canvas first when they're visual; keep `docs/design` in sync if boards change.

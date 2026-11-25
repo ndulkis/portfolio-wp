@@ -107,4 +107,20 @@ set_theme_mod( 'nav_menu_locations', array( 'footer' => $menu ) );
 assert( array( array( 'Mastodon', 'https://m.example' ) ) === nd_menu_links( 'footer', array() ) );
 wp_delete_nav_menu( $menu );
 set_theme_mod( 'nav_menu_locations', $saved );
+
+// Hardening: login names stay out of the public REST API and sitemap (admins still see users); no version/RSD in <head>.
+wp_set_current_user( 0 );
+assert( ! isset( rest_get_server()->get_routes()['/wp/v2/users'] ) );
+wp_set_current_user( get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) )[0] );
+$GLOBALS['wp_rest_server'] = null; // Routes are cached per server instance.
+assert( isset( rest_get_server()->get_routes()['/wp/v2/users'] ) );
+assert( ! isset( wp_get_sitemap_providers()['users'] ) );
+assert( false === has_action( 'wp_head', 'wp_generator' ) && false === has_action( 'wp_head', 'rsd_link' ) );
+
+// Turnstile (when keys are set): no token in the form = not a person, checked without calling Cloudflare.
+if ( function_exists( 'nd_turnstile_passed' ) ) {
+	$_POST = array( 'log' => 'someone' );
+	assert( false === nd_turnstile_passed() );
+	$_POST = array();
+}
 WP_CLI::success( 'Field checks passed.' );

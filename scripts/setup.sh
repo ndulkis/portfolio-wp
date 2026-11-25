@@ -12,7 +12,13 @@ if ! wp core is-installed 2>/dev/null; then
     --admin_user=admin --admin_password=admin --admin_email=admin@example.com --skip-email
 fi
 
+# Cloudflare Turnstile (wp-content/mu-plugins/nd-turnstile.php): Cloudflare's public always-pass TEST keys, local only.
+# The live site's wp-config.php gets the real keys from the Cloudflare dashboard (never commit them).
+wp config has ND_TURNSTILE_SITE_KEY || wp config set ND_TURNSTILE_SITE_KEY 1x00000000000000000000AA
+wp config has ND_TURNSTILE_SECRET || wp config set ND_TURNSTILE_SECRET 1x0000000000000000000000000000000AA
+
 wp theme activate nd-dive
+wp plugin activate --all   # Plugins live in git (wp-content/plugins); activate whatever is there.
 wp rewrite structure '/%postname%/'
 wp eval-file scripts/seed.php
 wp rewrite flush
