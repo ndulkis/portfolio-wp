@@ -54,6 +54,7 @@ update_option( 'page_for_posts', $posts );
 update_option( 'blogdescription', 'I build websites. And small tools.' );
 
 /* ── Projects ──────────────────────────────────────── */
+// nd_tags is a list field; the "a · b · c" text below is split into one row per tag when saved.
 $projects = array(
 	array( 'uab-blaze-a-brighter-future', 'UAB — Blaze a Brighter Future', 'Client work', array(
 		'nd_status' => 'live', 'nd_collab' => 'Built at Hounder',

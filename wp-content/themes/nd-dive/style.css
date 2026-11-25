@@ -8,6 +8,10 @@ Requires PHP: 8.1
 Text Domain: nd-dive
 */
 
+/* ── Fonts (self-hosted, latin, variable weight; OFL — see assets/fonts/README.md) ── */
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400 700; font-display: swap; src: url('assets/fonts/inter-latin.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400 500; font-display: swap; src: url('assets/fonts/jetbrains-mono-latin.woff2') format('woff2'); }
+
 /* ── Tokens ─────────────────────────────────────────── */
 :root {
 	--nd-ink: #E6F6F7;

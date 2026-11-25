@@ -16,7 +16,7 @@ add_action( 'after_setup_theme', function () {
 	add_theme_support( 'html5', array( 'search-form', 'gallery', 'caption', 'style', 'script' ) );
 	// The post body editor (TinyMCE) reads like the site: tokens from style.css, prose from editor-style.css.
 	$css = static fn( $file ) => get_theme_file_uri( $file ) . '?ver=' . nd_asset_ver( $file );
-	add_editor_style( array( ND_FONTS_URL, $css( 'style.css' ), $css( 'editor-style.css' ) ) );
+	add_editor_style( array( $css( 'style.css' ), $css( 'editor-style.css' ) ) );
 	register_nav_menus( array( 'header' => 'Header navigation', 'footer' => 'Footer links' ) );
 } );
 
@@ -25,14 +25,12 @@ function nd_asset_ver( $file ) {
 	return (string) filemtime( get_theme_file_path( $file ) );
 }
 
-const ND_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
 
 /* Galleries are laid out by .nd-prose .gallery in style.css, not WordPress's inline float styles. */
 add_filter( 'use_default_gallery_style', '__return_false' );
 
 add_action( 'wp_enqueue_scripts', function () {
-	wp_enqueue_style( 'nd-fonts', ND_FONTS_URL, array(), null );
-	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array( 'nd-fonts' ), nd_asset_ver( 'style.css' ) );
+	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array(), nd_asset_ver( 'style.css' ) );
 } );
 
 /* ── Projects ─────────────────────────────────────────── */
@@ -54,7 +52,7 @@ function nd_project_fields() {
 		'nd_problem'    => array( 'label' => 'Problem', 'type' => 'textarea', 'help' => 'What needed solving, in a sentence or two.' ),
 		'nd_built'      => array( 'label' => 'Built', 'type' => 'textarea', 'help' => 'What you made and how.' ),
 		'nd_learned'    => array( 'label' => 'Learned', 'type' => 'textarea', 'help' => 'What the project taught you.' ),
-		'nd_tags'       => array( 'label' => 'Tech tags', 'help' => 'Separate with " · ", e.g. wordpress · php · acf' ),
+		'nd_tags'       => array( 'label' => 'Tech tags', 'type' => 'rows', 'item' => 'tag', 'help' => 'One per row, e.g. wordpress, php, acf. Shown as "wordpress · php · acf".', 'columns' => array( 'tag' => array( 'label' => 'Tag' ) ) ),
 		'nd_link_url'   => array( 'label' => 'Link URL', 'type' => 'url', 'help' => 'Leave empty to hide the link.' ),
 		'nd_link_label' => array( 'label' => 'Link label', 'help' => 'e.g. "Visit site" or "View on GitHub". Defaults to "Visit".' ),
 	);
@@ -155,6 +153,10 @@ function nd_field_sanitizer( $field ) {
 		'select'   => static fn( $v ) => is_string( $v ) && array_key_exists( $v, $field['options'] ) ? $v : array_key_first( $field['options'] ),
 		// Rows: each column sanitized by its own type; rows with no text (selects aside) are dropped.
 		'rows'     => static function ( $rows ) use ( $field ) {
+			// A one-column list also takes "a · b · c" or "a, b, c" (old values, pasted text): one row each.
+			if ( is_string( $rows ) && 1 === count( $field['columns'] ) ) {
+				$rows = array_map( fn( $v ) => array( array_key_first( $field['columns'] ) => trim( $v ) ), preg_split( '/\s*[·,]\s*/u', $rows ) );
+			}
 			$out = array();
 			foreach ( is_array( $rows ) ? $rows : array() as $row ) {
 				if ( ! is_array( $row ) ) {
@@ -304,7 +306,8 @@ function nd_field_input( $name, $field, $value, $disabled, $id = '' ) {
 			}
 			return $out . '</select>';
 		case 'rows':
-			$row = static function ( $i, $values ) use ( $name, $field, $disabled ) {
+			$value = is_string( $value ) && '' !== $value ? nd_field_sanitizer( $field )( $value ) : $value; // Old "a · b" text.
+			$row   = static function ( $i, $values ) use ( $name, $field, $disabled ) {
 				$cols = '';
 				foreach ( $field['columns'] as $col => $def ) {
 					$cols .= sprintf( '<label class="nd-row__col nd-row__col--%s"><span>%s</span>%s</label>', esc_attr( $def['type'] ?? 'text' ), esc_html( $def['label'] ), nd_field_input( "{$name}[{$i}][{$col}]", $def, $values[ $col ] ?? '', $disabled ) );
@@ -409,6 +412,8 @@ function nd_copy_fields() {
 		return array( 'label' => $label, 'type' => 'rows', 'item' => $item, 'help' => $help, 'columns' => $cols, 'default' => array_map( fn( $d ) => array_combine( array_keys( $cols ), $d ), $defaults ) );
 	};
 	$text = array( 'label' => 'Text', 'type' => 'textarea' );
+	// A row of buttons (printed with nd_buttons()); the first is the filled one.
+	$buttons = static fn( $defaults ) => $rows( 'Buttons', 'button', 'The first is the main (filled) button. A path like /about/ or a full https:// address.', array( 'label' => 'Label', 'url' => array( 'label' => 'Link', 'type' => 'url' ) ), $defaults );
 	$fields = array(
 		'nd_links'    => array( 'Links & details', array(
 			'nd_github'   => $f( 'GitHub URL', 'https://github.com/ndulkis', 'url' ),
@@ -419,10 +424,9 @@ function nd_copy_fields() {
 			'nd_home_title'     => $f( 'Headline', 'I build websites.' ),
 			'nd_home_highlight' => $f( 'Headline — highlighted line', 'And small tools.' ),
 			'nd_home_lede'      => $f( 'Intro', 'I’m Nathan, a web developer at Hounder.', 'textarea' ),
+			'nd_home_buttons'   => $buttons( array( array( 'See projects', '/projects/' ), array( 'Read my story', '/about/' ) ) ),
 			'nd_home_short'     => $f( '"The short version"', 'I got into software by automating things I didn’t want to do by hand. Now I build sites for counties, airports, and utilities, where a broken page means someone can’t renew a permit.', 'textarea' ),
-		) + $btn( 'nd_home_btn1', 'Button 1', 'See projects', '/projects/' )
-			+ $btn( 'nd_home_btn2', 'Button 2', 'Read my story', '/about/' )
-			+ $btn( 'nd_home_all', 'Projects "view all" link', 'View all →', '/projects/' )
+		) + $btn( 'nd_home_all', 'Projects "view all" link', 'View all →', '/projects/' )
 			+ $btn( 'nd_home_more', '"The short version" link', 'The longer version →', '/about/' ) ),
 		'nd_about'    => array( 'About page', array(
 			'nd_about_title'     => $f( 'Headline', 'Hi, I’m Nathan.' ),
@@ -464,11 +468,10 @@ function nd_copy_fields() {
 			'nd_posts_lede'      => $f( 'Intro', 'Project updates, release notes, and things I’m learning along the way.', 'textarea' ),
 		) ),
 		'nd_404'      => array( '404 page', array(
-			'nd_404_title' => $f( 'Headline', 'Lost at sea.' ),
-			'nd_404_lede'  => $f( 'Intro', 'This page drifted off somewhere, or never existed. Let’s get you back to the surface.', 'textarea' ),
-		) + $btn( 'nd_404_btn1', 'Button 1', 'Back to the surface', '/' )
-			+ $btn( 'nd_404_btn2', 'Button 2', 'See projects', '/projects/' )
-			+ $btn( 'nd_404_btn3', 'Button 3', 'Read posts', '/posts/' ) ),
+			'nd_404_title'   => $f( 'Headline', 'Lost at sea.' ),
+			'nd_404_lede'    => $f( 'Intro', 'This page drifted off somewhere, or never existed. Let’s get you back to the surface.', 'textarea' ),
+			'nd_404_buttons' => $buttons( array( array( 'Back to the surface', '/' ), array( 'See projects', '/projects/' ), array( 'Read posts', '/posts/' ) ) ),
+		) ),
 	);
 	return $fields;
 }
@@ -524,6 +527,17 @@ add_action( 'customize_register', function ( $wp_customize ) {
 	}
 } );
 
+/** Prints a `rows` buttons field (see $buttons in nd_copy_fields()): first one filled, rows without a label or link skipped. */
+function nd_buttons( $id ) {
+	$first = true;
+	foreach ( nd_copy_rows( $id ) as $b ) {
+		if ( '' !== $b['label'] && $b['url'] ) {
+			printf( '<a class="nd-btn%s" href="%s">%s</a>', $first ? ' nd-btn--primary' : '', esc_url( $b['url'] ), esc_html( $b['label'] ) );
+			$first = false;
+		}
+	}
+}
+
 /** Prints a copy button/link ($id from $btn in nd_copy_fields()); hidden when its label or link is empty. $url overrides the link field. */
 function nd_link( $id, $class = '', $url = null ) {
 	$label = nd_copy( "{$id}_label" );
@@ -551,6 +565,99 @@ add_filter( 'display_post_states', function ( $states, $post ) {
 	}
 	return $states;
 }, 10, 2 );
+
+/* ── Head: description, share previews, icons ─────────── */
+
+/** One-line description of the current page, from copy the editor already writes. */
+function nd_meta_description() {
+	if ( is_front_page() ) {
+		$text = nd_copy( 'nd_home_lede' );
+	} elseif ( is_page( 'about' ) ) {
+		$text = nd_copy( 'nd_about_lede' );
+	} elseif ( is_post_type_archive( 'project' ) || is_tax( 'project_type' ) ) {
+		$text = nd_copy( 'nd_projects_lede' );
+	} elseif ( is_home() || is_category() ) {
+		$text = is_category() && category_description() ? category_description() : nd_copy( 'nd_posts_lede' );
+	} elseif ( is_singular( 'project' ) ) {
+		$text = get_post_meta( get_queried_object_id(), 'nd_blurb', true );
+	} elseif ( is_singular() ) {
+		$post = get_queried_object();
+		$text = has_excerpt( $post ) ? $post->post_excerpt : wp_trim_words( wp_strip_all_tags( strip_shortcodes( $post->post_content ) ), 30 );
+	}
+	return trim( wp_strip_all_tags( $text ?? '' ) ) ?: get_bloginfo( 'description' );
+}
+
+add_action( 'wp_head', function () {
+	if ( is_404() ) {
+		return;
+	}
+	$id    = is_singular() ? get_queried_object_id() : 0;
+	$image = $id && has_post_thumbnail( $id ) ? wp_get_attachment_image_src( get_post_thumbnail_id( $id ), 'large' ) : false;
+	$desc  = nd_meta_description();
+	$tags  = array(
+		'description'     => $desc,
+		'og:type'         => is_singular( 'post' ) ? 'article' : 'website',
+		'og:site_name'    => get_bloginfo( 'name' ),
+		'og:title'        => wp_get_document_title(),
+		'og:description'  => $desc,
+		'og:url'          => $id ? get_permalink( $id ) : home_url( user_trailingslashit( $GLOBALS['wp']->request ) ), // Path only, no query string.
+		// Cover image if the post has one, else the default card (assets/og-default.png, 1200×630).
+		'og:image'        => $image ? $image[0] : get_theme_file_uri( 'assets/og-default.png' ),
+		'og:image:width'  => $image ? $image[1] : 1200,
+		'og:image:height' => $image ? $image[2] : 630,
+		'twitter:card'    => 'summary_large_image',
+	);
+	foreach ( $tags as $key => $value ) {
+		$attr = str_starts_with( $key, 'og:' ) ? 'property' : 'name';
+		printf( "<meta %s=\"%s\" content=\"%s\">\n", $attr, esc_attr( $key ), esc_attr( $value ) );
+	}
+}, 5 );
+
+/* Fonts are self-hosted (@font-face in style.css); start the body font early so text doesn't swap late. */
+add_action( 'wp_head', function () {
+	printf( '<link rel="preload" href="%s" as="font" type="font/woff2" crossorigin>' . "\n", esc_url( get_theme_file_uri( 'assets/fonts/inter-latin.woff2' ) ) );
+}, 1 );
+
+/* Browser/home-screen icons: the "nd" badge, unless a Site Icon is set in the Customizer. */
+add_action( 'wp_head', function () {
+	if ( ! has_site_icon() ) {
+		printf( '<link rel="icon" href="%s" type="image/svg+xml">' . "\n", esc_url( get_theme_file_uri( 'assets/favicon.svg' ) ) );
+		printf( '<link rel="apple-touch-icon" href="%s">' . "\n", esc_url( get_theme_file_uri( 'assets/apple-touch-icon.png' ) ) );
+	}
+} );
+
+/* No emoji script/styles: browsers draw emoji natively, so WordPress's detection script is dead weight. */
+add_action( 'init', function () {
+	remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
+	remove_action( 'wp_enqueue_scripts', 'wp_enqueue_emoji_styles' );
+	remove_action( 'wp_print_styles', 'print_emoji_styles' );
+	remove_action( 'embed_head', 'print_emoji_detection_script' );
+	remove_action( 'enqueue_embed_scripts', 'wp_enqueue_emoji_styles' );
+	remove_filter( 'the_content_feed', 'wp_staticize_emoji' );
+	remove_filter( 'comment_text_rss', 'wp_staticize_emoji' );
+	remove_filter( 'wp_mail', 'wp_staticize_emoji_for_email' );
+} );
+// wp-admin adds its emoji hooks after init (wp-admin/includes/admin-filters.php), so remove those on admin_init.
+add_action( 'admin_init', function () {
+	remove_action( 'admin_print_scripts', 'print_emoji_detection_script' );
+	remove_action( 'admin_enqueue_scripts', 'wp_enqueue_emoji_styles' );
+	remove_action( 'admin_print_styles', 'print_emoji_styles' );
+} );
+add_filter( 'tiny_mce_plugins', fn( $plugins ) => array_diff( $plugins, array( 'wpemoji' ) ) );
+add_filter( 'emoji_svg_url', '__return_false' ); // Drops the s.w.org dns-prefetch too.
+
+/* ── No comments: the theme never shows them, so don't collect them (or their spam). ── */
+add_filter( 'comments_open', '__return_false' );
+add_filter( 'pings_open', '__return_false' );
+add_filter( 'feed_links_show_comments_feed', '__return_false' );
+add_action( 'init', function () {
+	foreach ( array( 'post', 'page' ) as $type ) {
+		remove_post_type_support( $type, 'comments' );
+		remove_post_type_support( $type, 'trackbacks' );
+	}
+} );
+add_action( 'admin_menu', fn() => remove_menu_page( 'edit-comments.php' ) );
+add_action( 'admin_bar_menu', fn( $bar ) => $bar->remove_node( 'comments' ), 99 );
 
 /* ── Template helpers ─────────────────────────────────── */
 
@@ -638,6 +745,7 @@ function nd_project( $id = 0 ) {
 	}
 	$terms            = get_the_terms( $id, 'project_type' );
 	$data['category'] = $terms && ! is_wp_error( $terms ) ? $terms[0]->name : '';
+	$data['tags']     = is_array( $data['tags'] ) ? implode( ' · ', array_column( $data['tags'], 'tag' ) ) : $data['tags']; // Display text.
 	return $data;
 }
 

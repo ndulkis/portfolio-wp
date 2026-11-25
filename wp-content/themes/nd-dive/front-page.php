@@ -17,8 +17,7 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 			<h1 class="nd-h1 nd-h1--home"><?php echo esc_html( nd_copy( 'nd_home_title' ) ); ?><br><span class="nd-hl"><?php echo esc_html( nd_copy( 'nd_home_highlight' ) ); ?></span></h1>
 			<p class="nd-lede"><?php echo esc_html( nd_copy( 'nd_home_lede' ) ); ?></p>
 			<div class="nd-actions">
-				<?php nd_link( 'nd_home_btn1', 'nd-btn nd-btn--primary' ); ?>
-				<?php nd_link( 'nd_home_btn2', 'nd-btn' ); ?>
+				<?php nd_buttons( 'nd_home_buttons' ); ?>
 			</div>
 		</div>
 		<?php nd_diver( 'home', 'Illustration of Nathan as a deep-sea diver, drifting at an angle, smiling and waving', 'nd-anim-home' ); ?>

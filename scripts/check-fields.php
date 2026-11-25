@@ -75,16 +75,28 @@ assert( array() === get_post_meta( $case->ID, 'nd_facts', true ) );
 update_post_meta( $case->ID, 'nd_facts', $keep );
 $_POST = array();
 
-// Buttons: label + link from the page; an empty label hides the button.
-$btn = static function () { ob_start(); nd_link( 'nd_404_btn2', 'nd-btn' ); return ob_get_clean(); };
-assert( '<a class="nd-btn" href="/projects/">See projects</a>' === $btn() );
-update_post_meta( $page, 'nd_404_btn2_url', 'javascript:alert(1)' );
-assert( '' === $btn() );
-update_post_meta( $page, 'nd_404_btn2_url', '/x/' );
-update_post_meta( $page, 'nd_404_btn2_label', '' );
-assert( '' === $btn() );
-delete_post_meta( $page, 'nd_404_btn2_url' );
-delete_post_meta( $page, 'nd_404_btn2_label' );
+// Single links: label + link from the page; an empty label hides it.
+$link = static function () { ob_start(); nd_link( 'nd_projects_cta', 'nd-btn' ); return ob_get_clean(); };
+$cta  = nd_copy_page_id( 'nd_projects' );
+assert( '<a class="nd-btn" href="/posts/">Read the posts</a>' === $link() );
+update_post_meta( $cta, 'nd_projects_cta_url', 'javascript:alert(1)' );
+assert( '' === $link() );
+delete_post_meta( $cta, 'nd_projects_cta_url' );
+
+// Button lists: first shown button is filled; unsafe links and empty labels are skipped.
+$btns = static function () { ob_start(); nd_buttons( 'nd_404_buttons' ); return ob_get_clean(); };
+assert( str_starts_with( $btns(), '<a class="nd-btn nd-btn--primary" href="/">Back to the surface</a><a class="nd-btn" href="/projects/">' ) );
+update_post_meta( $page, 'nd_404_buttons', array( array( 'label' => 'Bad', 'url' => 'javascript:alert(1)' ), array( 'label' => 'Home', 'url' => '/' ) ) );
+assert( '<a class="nd-btn nd-btn--primary" href="/">Home</a>' === $btns() );
+delete_post_meta( $page, 'nd_404_buttons' );
+
+// Project tags: a list; old/pasted "a · b, c" text becomes one row per tag; cards show "a · b · c".
+$proj = get_page_by_path( 'bollard', OBJECT, 'project' );
+$keep = get_post_meta( $proj->ID, 'nd_tags', true );
+update_post_meta( $proj->ID, 'nd_tags', 'macos · markdown, swift' );
+assert( array( array( 'tag' => 'macos' ), array( 'tag' => 'markdown' ), array( 'tag' => 'swift' ) ) === get_post_meta( $proj->ID, 'nd_tags', true ) );
+assert( 'macos · markdown · swift' === nd_project( $proj->ID )['tags'] );
+update_post_meta( $proj->ID, 'nd_tags', $keep );
 // Menus: an assigned menu's items, otherwise the fallback minus empty links.
 $saved = get_theme_mod( 'nav_menu_locations' );
 set_theme_mod( 'nav_menu_locations', array() );
