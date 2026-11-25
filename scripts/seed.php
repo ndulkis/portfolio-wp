@@ -46,17 +46,10 @@ foreach ( array( array( 'hello-world', 'post' ), array( 'sample-page', 'page' ) 
 /* ── Pages ─────────────────────────────────────────── */
 $home  = nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'home', 'post_title' => 'Home' ) );
 $posts = nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'posts', 'post_title' => 'Posts' ) );
-nd_seed_post( array(
-	'post_type'    => 'page',
-	'post_name'    => 'about',
-	'post_title'   => 'About',
-	'post_content' => implode( '', array(
-		nd_stop_markup( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
-		nd_stop_markup( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
-		nd_stop_markup( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
-		nd_stop_markup( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
-	) ),
-) );
+/* About, Projects and 404 have no body: their copy is Pages → Edit → "Page copy" (defaults in nd_copy_fields()). */
+nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'about', 'post_title' => 'About', 'post_content' => '' ) );
+nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'projects', 'post_title' => 'Projects', 'menu_order' => 1 ) );
+nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'not-found', 'post_title' => '404 — Not found', 'post_status' => 'private', 'menu_order' => 9 ) );
 update_option( 'show_on_front', 'page' );
 update_option( 'page_on_front', $home );
 update_option( 'page_for_posts', $posts );
@@ -167,4 +160,29 @@ foreach ( $seed_posts as $i => list( $slug, $title, $kind, $template, $date, $ex
 	update_post_meta( $id, '_wp_page_template', $template ?: 'default' );
 }
 
-WP_CLI::success( 'Seeded pages, projects and posts.' );
+/* ── Menus (Appearance → Menus). Created once; re-seeding leaves your edits alone. ── */
+$locations = get_theme_mod( 'nav_menu_locations', array() );
+foreach ( array(
+	'header' => array( 'Header', array(
+		array( 'title' => 'Projects', 'type' => 'post_type_archive', 'object' => 'project' ),
+		array( 'title' => 'Posts', 'type' => 'post_type', 'object' => 'page', 'object-id' => $posts ),
+		array( 'title' => 'About', 'type' => 'post_type', 'object' => 'page', 'object-id' => get_page_by_path( 'about' )->ID ),
+	) ),
+	'footer' => array( 'Footer', array(
+		array( 'title' => 'GitHub', 'type' => 'custom', 'url' => nd_copy( 'nd_github' ) ),
+	) ),
+) as $location => list( $name, $items ) ) {
+	if ( wp_get_nav_menu_object( $name ) ) {
+		WP_CLI::log( "Menu exists: {$name}" );
+	} else {
+		$menu = wp_create_nav_menu( $name );
+		foreach ( $items as $item ) {
+			wp_update_nav_menu_item( $menu, 0, array_combine( array_map( fn( $k ) => "menu-item-{$k}", array_keys( $item ) ), $item ) + array( 'menu-item-status' => 'publish' ) );
+		}
+		WP_CLI::log( "Created menu: {$name}" );
+	}
+	$locations[ $location ] = $locations[ $location ] ?? wp_get_nav_menu_object( $name )->term_id;
+}
+set_theme_mod( 'nav_menu_locations', $locations );
+
+WP_CLI::success( 'Seeded pages, projects, posts and menus.' );

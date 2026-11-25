@@ -16,8 +16,9 @@ add_action( 'after_setup_theme', function () {
 	add_theme_support( 'html5', array( 'search-form', 'gallery', 'caption', 'style', 'script' ) );
 	add_theme_support( 'editor-styles' );
 	add_theme_support( 'dark-editor-style' );
-	// The block editor scopes these to the canvas: site tokens + dive stops from style.css, prose from editor-style.css.
+	// The block editor scopes these to the canvas: site tokens from style.css, prose from editor-style.css.
 	add_editor_style( array( ND_FONTS_URL, 'style.css', 'editor-style.css' ) );
+	register_nav_menus( array( 'header' => 'Header navigation', 'footer' => 'Footer links' ) );
 } );
 
 const ND_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
@@ -70,6 +71,7 @@ function nd_field_sanitizer( $field ) {
 	return match ( $field['type'] ?? 'text' ) {
 		'textarea' => static fn( $v ) => sanitize_textarea_field( $v ),
 		'url'      => static fn( $v ) => esc_url_raw( $v ),
+		'email'    => static fn( $v ) => sanitize_email( $v ),
 		'select'   => static fn( $v ) => is_string( $v ) && array_key_exists( $v, $field['options'] ) ? $v : array_key_first( $field['options'] ),
 		default    => static fn( $v ) => sanitize_text_field( $v ),
 	};
@@ -99,28 +101,13 @@ add_action( 'init', function () {
 		'show_in_rest'      => true,
 		'rewrite'           => array( 'slug' => 'project-type' ),
 	) );
-	foreach ( array( 'project' => nd_project_fields(), 'post' => nd_post_fields() ) as $type => $fields ) {
+	$page_fields = array_merge( ...array_column( array_diff_key( nd_copy_fields(), array( 'nd_links' => 0 ) ), 1 ) );
+	foreach ( array( 'project' => nd_project_fields(), 'post' => nd_post_fields(), 'page' => $page_fields ) as $type => $fields ) {
 		foreach ( $fields as $key => $field ) {
 			register_post_meta( $type, $key, array( 'type' => 'string', 'single' => true, 'show_in_rest' => true, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
 		}
 	}
-
-	register_block_pattern( 'nd-dive/stop', array(
-		'title'       => 'Dive stop (About story)',
-		'description' => 'One stop on the About page depth line.',
-		'categories'  => array( 'text' ),
-		'content'     => nd_stop_markup( '0 m · surface', 'Heading', 'Story paragraph.' ),
-	) );
 } );
-
-/** Markup for one About-page story stop (used by the block pattern and the seed). */
-function nd_stop_markup( $depth, $heading, $text ) {
-	return '<!-- wp:group {"className":"nd-stop","layout":{"type":"default"}} --><div class="wp-block-group nd-stop">'
-		. '<!-- wp:paragraph {"className":"nd-stop__depth"} --><p class="nd-stop__depth">' . esc_html( $depth ) . '</p><!-- /wp:paragraph -->'
-		. '<!-- wp:heading --><h2 class="wp-block-heading">' . esc_html( $heading ) . '</h2><!-- /wp:heading -->'
-		. '<!-- wp:paragraph --><p>' . esc_html( $text ) . '</p><!-- /wp:paragraph -->'
-		. '</div><!-- /wp:group -->';
-}
 
 /* Simple meta boxes so the fields are editable without a plugin. */
 add_action( 'add_meta_boxes', function () {
@@ -139,7 +126,7 @@ function nd_render_fields_box( $post, $box ) {
 	$any      = false;
 	echo '<table class="form-table" role="presentation">';
 	foreach ( $box['args']['fields'] as $key => $field ) {
-		$value = get_post_meta( $post->ID, $key, true );
+		$value = metadata_exists( 'post', $post->ID, $key ) ? get_post_meta( $post->ID, $key, true ) : ( $field['default'] ?? '' );
 		$attrs = sprintf( 'id="%1$s" name="%1$s" class="widefat"', esc_attr( $key ) );
 		$off   = isset( $field['templates'] ) && ! in_array( $template, $field['templates'], true );
 		$any   = $any || ! $off;
@@ -176,6 +163,16 @@ function nd_render_fields_box( $post, $box ) {
 	}
 }
 
+/** The editable fields a post has: project story, post template details, or its page copy. */
+function nd_fields_for( $post ) {
+	return match ( $post->post_type ) {
+		'project' => nd_project_fields(),
+		'post'    => nd_post_fields(),
+		'page'    => nd_copy_fields()[ nd_page_section( $post->ID ) ][1] ?? array(),
+		default   => array(),
+	};
+}
+
 add_action( 'save_post', function ( $post_id, $post ) {
 	if ( ! isset( $_POST['nd_fields_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['nd_fields_nonce'] ), 'nd_fields' ) ) {
 		return;
@@ -183,8 +180,7 @@ add_action( 'save_post', function ( $post_id, $post ) {
 	if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
 		return;
 	}
-	$fields = 'project' === $post->post_type ? nd_project_fields() : nd_post_fields();
-	foreach ( array_keys( $fields ) as $key ) {
+	foreach ( array_keys( nd_fields_for( $post ) ) as $key ) {
 		if ( isset( $_POST[ $key ] ) ) {
 			update_post_meta( $post_id, $key, wp_unslash( $_POST[ $key ] ) ); // Sanitized by register_post_meta.
 		}
@@ -209,116 +205,174 @@ add_action( 'pre_get_posts', function ( $q ) {
 } );
 
 /*
- * ── Customizer: links + the fixed copy on each page ──
- * section id => array( title, preview URL, settings: id => array( label, default, type = text|textarea|url|email ) ).
- * Templates read these with nd_copy( 'id' ).
+ * ── Fixed copy on each page ──
+ * Page copy is post meta on its page, edited in Pages → Edit ("Page copy" box).
+ * Site-wide links stay in the Customizer. Templates read both with nd_copy( 'id' ).
+ * section => array( title, fields: id => array( label, default, type = text|textarea|url|email ) ).
  */
+// ponytail: fixed number of About story slots; raise it (or switch to a repeater) if the story outgrows it.
+const ND_STOPS = 6;
+
 function nd_copy_fields() {
-	return array(
-		'nd_links'    => array( 'Links & details', '', array(
-			'nd_github'   => array( 'GitHub URL', 'https://github.com/ndulkis', 'url' ),
-			'nd_linkedin' => array( 'LinkedIn URL', '', 'url' ),
-			'nd_email'    => array( 'Email address', '', 'email' ),
+	static $fields;
+	if ( $fields ) {
+		return $fields;
+	}
+	$f = static fn( $label, $default, $type = 'text', $help = '' ) => array( 'label' => $label, 'default' => $default, 'type' => $type, 'help' => $help );
+	// A button or link: "{$id}_label" + "{$id}_url" (printed with nd_link()). Empty label hides it.
+	$btn = static fn( $id, $name, $label, $url = null ) => array( "{$id}_label" => $f( "{$name} — label", $label, 'text', null === $url ? 'Links to the address in Customizer → Links & details (hidden until set).' : 'Leave empty to hide.' ) )
+		+ ( null === $url ? array() : array( "{$id}_url" => $f( "{$name} — link", $url, 'url', 'A path like /about/ or a full https:// address.' ) ) );
+	// About story stops: nd_stop{n}_depth/_title/_text, ND_STOPS slots; $defaults fill the first ones.
+	$stops = static function ( $defaults ) use ( $f ) {
+		$out = array();
+		foreach ( range( 1, ND_STOPS ) as $n ) {
+			list( $depth, $title, $text ) = $defaults[ $n - 1 ] ?? array( '', '', '' );
+			$out[ "nd_stop{$n}_depth" ] = $f( "Story stop {$n} — depth", $depth, 'text', 1 === $n ? 'The label on the depth line, e.g. "30 m · curious".' : '' );
+			$out[ "nd_stop{$n}_title" ] = $f( "Story stop {$n} — heading", $title, 'text', 1 === $n ? 'Leave a heading empty to hide that stop.' : '' );
+			$out[ "nd_stop{$n}_text" ]  = $f( "Story stop {$n} — text", $text, 'textarea' );
+		}
+		return $out;
+	};
+	$fields = array(
+		'nd_links'    => array( 'Links & details', array(
+			'nd_github'   => $f( 'GitHub URL', 'https://github.com/ndulkis', 'url' ),
+			'nd_linkedin' => $f( 'LinkedIn URL', '', 'url' ),
+			'nd_email'    => $f( 'Email address', '', 'email' ),
 		) ),
-		'nd_home'     => array( 'Home page', home_url( '/' ), array(
-			'nd_home_title'     => array( 'Headline', 'I build websites.' ),
-			'nd_home_highlight' => array( 'Headline — highlighted line', 'And small tools.' ),
-			'nd_home_lede'      => array( 'Intro', 'I’m Nathan, a web developer at Hounder.', 'textarea' ),
-			'nd_home_short'     => array( '"The short version"', 'I got into software by automating things I didn’t want to do by hand. Now I build sites for counties, airports, and utilities, where a broken page means someone can’t renew a permit.', 'textarea' ),
+		'nd_home'     => array( 'Home page', array(
+			'nd_home_title'     => $f( 'Headline', 'I build websites.' ),
+			'nd_home_highlight' => $f( 'Headline — highlighted line', 'And small tools.' ),
+			'nd_home_lede'      => $f( 'Intro', 'I’m Nathan, a web developer at Hounder.', 'textarea' ),
+			'nd_home_short'     => $f( '"The short version"', 'I got into software by automating things I didn’t want to do by hand. Now I build sites for counties, airports, and utilities, where a broken page means someone can’t renew a permit.', 'textarea' ),
+		) + $btn( 'nd_home_btn1', 'Button 1', 'See projects', '/projects/' )
+			+ $btn( 'nd_home_btn2', 'Button 2', 'Read my story', '/about/' )
+			+ $btn( 'nd_home_all', 'Projects "view all" link', 'View all →', '/projects/' )
+			+ $btn( 'nd_home_more', '"The short version" link', 'The longer version →', '/about/' ) ),
+		'nd_about'    => array( 'About page', array(
+			'nd_about_title'     => $f( 'Headline', 'Hi, I’m Nathan.' ),
+			'nd_about_highlight' => $f( 'Headline — highlighted line', 'Let’s go a little deeper.' ),
+			'nd_about_lede'      => $f( 'Intro', 'I build websites and the systems behind them. Here’s how I got here.', 'textarea' ),
+		) + $stops( array(
+			array( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
+			array( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
+			array( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
+			array( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
+		) ) + array(
+			'nd_now'             => $f( 'At a glance — Now', 'Web developer, Hounder' ),
+			'nd_stack'           => $f( 'At a glance — Stack', 'PHP, Drupal, WordPress, Laravel, React' ),
+			'nd_location'        => $f( 'At a glance — Based in', '[CITY, STATE]' ),
+			'nd_hobbies'         => $f( 'At a glance — Off the clock', '[HOBBIES]' ),
+			'nd_p1_title'        => $f( 'How I work 1 — heading', 'Config in code' ),
+			'nd_p1_text'         => $f( 'How I work 1 — text', 'Every environment rebuilds the same way, and changes get reviewed before production.', 'textarea' ),
+			'nd_p2_title'        => $f( 'How I work 2 — heading', 'Build for the editor' ),
+			'nd_p2_text'         => $f( 'How I work 2 — text', 'Structured fields hold up for years after handoff. Freeform pages decay.', 'textarea' ),
+			'nd_p3_title'        => $f( 'How I work 3 — heading', 'Accessibility first' ),
+			'nd_p3_text'         => $f( 'How I work 3 — text', 'Audit before launch, not after. Cheaper, and nobody gets left out.', 'textarea' ),
+			'nd_p4_title'        => $f( 'How I work 4 — heading', 'Real browsers' ),
+			'nd_p4_text'         => $f( 'How I work 4 — text', 'Support what visitors actually run, including older and locked-down machines.', 'textarea' ),
+			'nd_about_cta_title' => $f( 'Closing — heading', 'Come say hello.' ),
+			'nd_about_cta_text'  => $f( 'Closing — text', 'Always happy to talk about interesting problems.' ),
+		) + $btn( 'nd_about_email', 'Email button', 'Email me' )
+			+ $btn( 'nd_about_resume', 'Résumé button', 'Download résumé', get_theme_file_uri( 'assets/resume.pdf' ) )
+			+ $btn( 'nd_about_linkedin', 'LinkedIn button', 'LinkedIn ↗' ) ),
+		'nd_projects' => array( 'Projects page', array(
+			'nd_projects_title'     => $f( 'Headline', 'Things I’ve built.' ),
+			'nd_projects_highlight' => $f( 'Headline — highlighted line', 'And what they taught me.' ),
+			'nd_projects_lede'      => $f( 'Intro', 'Client sites, side projects, and a few games built with friends.', 'textarea' ),
+			'nd_projects_cta_title' => $f( 'Closing — heading', 'Want the backstory?' ),
+			'nd_projects_cta_text'  => $f( 'Closing — text', 'Posts go deeper on how these were built.' ),
+		) + $btn( 'nd_projects_cta', 'Closing button', 'Read the posts', '/posts/' ) ),
+		'nd_posts'    => array( 'Posts page', array(
+			'nd_posts_title'     => $f( 'Headline', 'Messages from' ),
+			'nd_posts_highlight' => $f( 'Headline — highlighted line', 'down here.' ),
+			'nd_posts_lede'      => $f( 'Intro', 'Project updates, release notes, and things I’m learning along the way.', 'textarea' ),
 		) ),
-		'nd_about'    => array( 'About page', home_url( '/about/' ), array(
-			'nd_about_title'     => array( 'Headline', 'Hi, I’m Nathan.' ),
-			'nd_about_highlight' => array( 'Headline — highlighted line', 'Let’s go a little deeper.' ),
-			'nd_about_lede'      => array( 'Intro', 'I build websites and the systems behind them. Here’s how I got here.', 'textarea' ),
-			'nd_now'             => array( 'At a glance — Now', 'Web developer, Hounder' ),
-			'nd_stack'           => array( 'At a glance — Stack', 'PHP, Drupal, WordPress, Laravel, React' ),
-			'nd_location'        => array( 'At a glance — Based in', '[CITY, STATE]' ),
-			'nd_hobbies'         => array( 'At a glance — Off the clock', '[HOBBIES]' ),
-			'nd_p1_title'        => array( 'How I work 1 — heading', 'Config in code' ),
-			'nd_p1_text'         => array( 'How I work 1 — text', 'Every environment rebuilds the same way, and changes get reviewed before production.', 'textarea' ),
-			'nd_p2_title'        => array( 'How I work 2 — heading', 'Build for the editor' ),
-			'nd_p2_text'         => array( 'How I work 2 — text', 'Structured fields hold up for years after handoff. Freeform pages decay.', 'textarea' ),
-			'nd_p3_title'        => array( 'How I work 3 — heading', 'Accessibility first' ),
-			'nd_p3_text'         => array( 'How I work 3 — text', 'Audit before launch, not after. Cheaper, and nobody gets left out.', 'textarea' ),
-			'nd_p4_title'        => array( 'How I work 4 — heading', 'Real browsers' ),
-			'nd_p4_text'         => array( 'How I work 4 — text', 'Support what visitors actually run, including older and locked-down machines.', 'textarea' ),
-			'nd_about_cta_title' => array( 'Closing — heading', 'Come say hello.' ),
-			'nd_about_cta_text'  => array( 'Closing — text', 'Always happy to talk about interesting problems.' ),
-		) ),
-		'nd_projects' => array( 'Projects page', get_post_type_archive_link( 'project' ), array(
-			'nd_projects_title'     => array( 'Headline', 'Things I’ve built.' ),
-			'nd_projects_highlight' => array( 'Headline — highlighted line', 'And what they taught me.' ),
-			'nd_projects_lede'      => array( 'Intro', 'Client sites, side projects, and a few games built with friends.', 'textarea' ),
-			'nd_projects_cta_title' => array( 'Closing — heading', 'Want the backstory?' ),
-			'nd_projects_cta_text'  => array( 'Closing — text', 'Posts go deeper on how these were built.' ),
-		) ),
-		'nd_posts'    => array( 'Posts page', get_permalink( get_option( 'page_for_posts' ) ), array(
-			'nd_posts_title'     => array( 'Headline', 'Messages from' ),
-			'nd_posts_highlight' => array( 'Headline — highlighted line', 'down here.' ),
-			'nd_posts_lede'      => array( 'Intro', 'Project updates, release notes, and things I’m learning along the way.', 'textarea' ),
-		) ),
-		'nd_404'      => array( '404 page', home_url( '/this-page-does-not-exist/' ), array(
-			'nd_404_title' => array( 'Headline', 'Lost at sea.' ),
-			'nd_404_lede'  => array( 'Intro', 'This page drifted off somewhere, or never existed. Let’s get you back to the surface.', 'textarea' ),
-		) ),
+		'nd_404'      => array( '404 page', array(
+			'nd_404_title' => $f( 'Headline', 'Lost at sea.' ),
+			'nd_404_lede'  => $f( 'Intro', 'This page drifted off somewhere, or never existed. Let’s get you back to the surface.', 'textarea' ),
+		) + $btn( 'nd_404_btn1', 'Button 1', 'Back to the surface', '/' )
+			+ $btn( 'nd_404_btn2', 'Button 2', 'See projects', '/projects/' )
+			+ $btn( 'nd_404_btn3', 'Button 3', 'Read posts', '/posts/' ) ),
 	);
+	return $fields;
 }
 
-/** Customizer value with its default. */
+/*
+ * The page that holds a section's copy. Projects (slug `projects`, its URL serves the project
+ * archive) and 404 (slug `not-found`, private) are pages only so their copy is edited like the rest.
+ */
+function nd_copy_page_id( $section ) {
+	$slug = array( 'nd_about' => 'about', 'nd_projects' => 'projects', 'nd_404' => 'not-found' );
+	return match ( $section ) {
+		'nd_home'  => (int) get_option( 'page_on_front' ),
+		'nd_posts' => (int) get_option( 'page_for_posts' ),
+		default    => isset( $slug[ $section ] ) ? (int) get_page_by_path( $slug[ $section ] )?->ID : 0,
+	};
+}
+
+/** Copy section stored on this page, or ''. */
+function nd_page_section( $post_id ) {
+	foreach ( array_keys( nd_copy_fields() ) as $section ) {
+		if ( 'nd_links' !== $section && $post_id && nd_copy_page_id( $section ) === (int) $post_id ) {
+			return $section;
+		}
+	}
+	return '';
+}
+
+/** Copy value with its default: links from the Customizer, the rest from its page. */
 function nd_copy( $id ) {
-	foreach ( nd_copy_fields() as list( , , $settings ) ) {
-		if ( isset( $settings[ $id ] ) ) {
-			return get_theme_mod( $id, $settings[ $id ][1] );
+	foreach ( nd_copy_fields() as $section => list( , $fields ) ) {
+		if ( isset( $fields[ $id ] ) ) {
+			if ( 'nd_links' === $section ) {
+				return get_theme_mod( $id, $fields[ $id ]['default'] );
+			}
+			$page = nd_copy_page_id( $section );
+			return $page && metadata_exists( 'post', $page, $id ) ? get_post_meta( $page, $id, true ) : $fields[ $id ]['default'];
 		}
 	}
 	return '';
 }
 
 add_action( 'customize_register', function ( $wp_customize ) {
-	$wp_customize->add_panel( 'nd_site', array( 'title' => 'Site content', 'priority' => 20 ) );
-	$sanitize = array( 'url' => 'esc_url_raw', 'email' => 'sanitize_email', 'textarea' => 'sanitize_textarea_field', 'text' => 'sanitize_text_field' );
-	foreach ( nd_copy_fields() as $section => list( $title, $preview, $settings ) ) {
-		$wp_customize->add_section( $section, array( 'title' => $title, 'panel' => 'nd_site' ) );
-		foreach ( $settings as $id => $s ) {
-			$type = $s[2] ?? 'text';
-			$wp_customize->add_setting( $id, array( 'default' => $s[1], 'sanitize_callback' => $sanitize[ $type ] ) );
-			$wp_customize->add_control( $id, array( 'label' => $s[0], 'section' => $section, 'type' => $type ) );
-		}
+	list( $title, $fields ) = nd_copy_fields()['nd_links'];
+	$wp_customize->add_section( 'nd_links', array( 'title' => $title, 'priority' => 20, 'description' => 'Page text and buttons are edited on each page (Pages → Edit); header and footer links in Appearance → Menus.' ) );
+	foreach ( $fields as $id => $field ) {
+		$wp_customize->add_setting( $id, array( 'default' => $field['default'], 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
+		$wp_customize->add_control( $id, array( 'label' => $field['label'], 'section' => 'nd_links', 'type' => $field['type'] ) );
 	}
 } );
 
-/* Jump the Customizer preview to the page whose section is opened. */
-add_action( 'customize_controls_print_footer_scripts', function () {
-	$urls = array_filter( wp_list_pluck( nd_copy_fields(), 1 ) );
-	?>
-	<script>
-	wp.customize.bind( 'ready', function () {
-		Object.entries( <?php echo wp_json_encode( $urls ); ?> ).forEach( function ( [ id, url ] ) {
-			wp.customize.section( id, function ( s ) {
-				s.expanded.bind( function ( open ) { if ( open ) { wp.customize.previewer.previewUrl.set( url ); } } );
-			} );
-		} );
-	} );
-	</script>
-	<?php
-} );
+/** Prints a copy button/link ($id from $btn in nd_copy_fields()); hidden when its label or link is empty. $url overrides the link field. */
+function nd_link( $id, $class = '', $url = null ) {
+	$label = nd_copy( "{$id}_label" );
+	$url   = $url ?? nd_copy( "{$id}_url" );
+	if ( '' !== $label && $url ) {
+		printf( '<a%s href="%s">%s</a>', $class ? ' class="' . esc_attr( $class ) . '"' : '', esc_url( $url ), esc_html( $label ) );
+	}
+}
 
-/* On the Home, About and Posts pages, point to where their fixed copy is edited. */
+/* The theme's pages are built from their copy fields (plus projects/posts), so they get the classic screen with just the copy box. */
+add_filter( 'use_block_editor_for_post', fn( $use, $post ) => 'page' === $post->post_type && nd_page_section( $post->ID ) ? false : $use, 10, 2 );
+
 add_action( 'add_meta_boxes_page', function ( $post ) {
-	$section = match ( (int) $post->ID ) {
-		(int) get_option( 'page_on_front' )  => 'nd_home',
-		(int) get_option( 'page_for_posts' ) => 'nd_posts',
-		default                              => 'about' === $post->post_name ? 'nd_about' : '',
-	};
+	$section = nd_page_section( $post->ID );
 	if ( ! $section ) {
 		return;
 	}
-	add_meta_box( 'nd-page-copy', 'Page headline & copy', function () use ( $section, $post ) {
-		$url = add_query_arg( array( 'autofocus[section]' => $section, 'url' => rawurlencode( get_permalink( $post ) ) ), admin_url( 'customize.php' ) );
-		echo '<p>' . ( 'nd_about' === $section ? 'This page’s content is the dive-log story (add stops with the “Dive stop” pattern).' : 'This page’s body isn’t shown; the layout is built from projects and posts.' ) . ' The headline, intro and other fixed text are edited in the Customizer.</p>';
-		printf( '<p><a class="button" href="%s">Edit page copy</a></p>', esc_url( $url ) );
-	}, 'page', 'side', 'high' );
+	remove_post_type_support( 'page', 'editor' );
+	add_meta_box( 'nd-page-copy', 'Page copy', 'nd_render_fields_box', 'page', 'normal', 'high', array( 'fields' => nd_fields_for( $post ) ) );
 } );
+
+/* Mark the theme's pages in the Pages list. */
+add_filter( 'display_post_states', function ( $states, $post ) {
+	$labels  = array( 'nd_projects' => 'Projects archive', 'nd_404' => '404 page' );
+	$section = 'page' === $post->post_type ? nd_page_section( $post->ID ) : '';
+	if ( isset( $labels[ $section ] ) ) {
+		$states[ $section ] = $labels[ $section ];
+	}
+	return $states;
+}, 10, 2 );
 
 /* ── Template helpers ─────────────────────────────────── */
 
@@ -334,6 +388,28 @@ function nd_nav_current() {
 		return 'about';
 	}
 	return '';
+}
+
+/*
+ * Links for a menu location (Appearance → Menus) as array( label, url ) pairs, or $fallback
+ * when no menu is assigned. Printed as plain <a>s so the nav keeps its flat markup.
+ */
+function nd_menu_links( $location, $fallback ) {
+	$menus = get_nav_menu_locations();
+	$items = empty( $menus[ $location ] ) ? false : wp_get_nav_menu_items( $menus[ $location ] );
+	if ( false === $items ) {
+		return array_values( array_filter( $fallback, fn( $l ) => $l[1] ) );
+	}
+	return array_map( fn( $i ) => array( $i->title, $i->url ), array_filter( $items, fn( $i ) => ! $i->menu_item_parent ) );
+}
+
+/** The default header links (also what the seed puts in the Header menu). */
+function nd_default_nav() {
+	return array(
+		'projects' => array( 'Projects', get_post_type_archive_link( 'project' ) ),
+		'posts'    => array( 'Posts', get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/' ) ),
+		'about'    => array( 'About', home_url( '/about/' ) ),
+	);
 }
 
 /** Inline-safe <img> for a diver pose from assets/divers. */

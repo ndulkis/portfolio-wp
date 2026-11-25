@@ -2,15 +2,21 @@
 /**
  * Global footer + seafloor. Closes the .nd-ocean wrapper opened in header.php.
  */
+// Links come from Appearance → Menus → "Footer links"; without one, from Customizer → Links & details.
 $nd_email = nd_copy( 'nd_email' );
+$nd_links = nd_menu_links( 'footer', array(
+	array( 'GitHub', nd_copy( 'nd_github' ) ),
+	array( 'LinkedIn', nd_copy( 'nd_linkedin' ) ),
+	array( 'Email', $nd_email ? 'mailto:' . antispambot( $nd_email ) : '' ),
+) );
 ?>
 <div class="nd-wrap">
 	<footer class="nd-footer">
 		<span>&copy; <?php echo esc_html( wp_date( 'Y' ) ); ?> Nathan Dulkis</span>
 		<nav aria-label="Social">
-			<a href="<?php echo esc_url( nd_copy( 'nd_github' ) ); ?>">GitHub</a>
-			<?php if ( nd_copy( 'nd_linkedin' ) ) : ?><a href="<?php echo esc_url( nd_copy( 'nd_linkedin' ) ); ?>">LinkedIn</a><?php endif; ?>
-			<?php if ( $nd_email ) : ?><a href="<?php echo esc_url( 'mailto:' . antispambot( $nd_email ) ); ?>">Email</a><?php endif; ?>
+			<?php foreach ( $nd_links as list( $label, $url ) ) : ?>
+				<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $label ); ?></a>
+			<?php endforeach; ?>
 		</nav>
 	</footer>
 </div>

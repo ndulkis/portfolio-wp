@@ -1,7 +1,7 @@
 <?php
 /**
- * About (page slug "about"). The story stops are the page content — add more with the
- * "Dive stop" block pattern. Design: docs/design/About.dc.html
+ * About (page slug "about"). All copy, including the story stops, comes from the page's
+ * "Page copy" box (Pages → Edit). Design: docs/design/About.dc.html
  */
 get_header();
 nd_decor( 'fish', 'top: 300px; right: 6%;' );
@@ -20,7 +20,13 @@ $nd_email = nd_copy( 'nd_email' );
 	</section>
 
 	<section class="nd-story" aria-label="My story">
-		<?php while ( have_posts() ) : the_post(); the_content(); endwhile; ?>
+		<?php foreach ( range( 1, ND_STOPS ) as $i ) : if ( '' === nd_copy( "nd_stop{$i}_title" ) ) { continue; } ?>
+			<div class="nd-stop">
+				<p class="nd-stop__depth"><?php echo esc_html( nd_copy( "nd_stop{$i}_depth" ) ); ?></p>
+				<h2><?php echo esc_html( nd_copy( "nd_stop{$i}_title" ) ); ?></h2>
+				<p><?php echo esc_html( nd_copy( "nd_stop{$i}_text" ) ); ?></p>
+			</div>
+		<?php endforeach; ?>
 	</section>
 
 	<section class="nd-glance">
@@ -49,9 +55,9 @@ $nd_email = nd_copy( 'nd_email' );
 			<p class="nd-muted" style="margin: 0"><?php echo esc_html( nd_copy( 'nd_about_cta_text' ) ); ?></p>
 		</div>
 		<div class="nd-actions" style="margin: 0">
-			<?php if ( $nd_email ) : ?><a class="nd-btn nd-btn--primary" href="<?php echo esc_url( 'mailto:' . antispambot( $nd_email ) ); ?>">Email me</a><?php endif; ?>
-			<a class="nd-btn" href="<?php echo esc_url( get_theme_file_uri( 'assets/resume.pdf' ) ); ?>">Download résumé</a>
-			<?php if ( nd_copy( 'nd_linkedin' ) ) : ?><a class="nd-btn" href="<?php echo esc_url( nd_copy( 'nd_linkedin' ) ); ?>">LinkedIn ↗</a><?php endif; ?>
+			<?php nd_link( 'nd_about_email', 'nd-btn nd-btn--primary', $nd_email ? 'mailto:' . antispambot( $nd_email ) : '' ); ?>
+			<?php nd_link( 'nd_about_resume', 'nd-btn' ); ?>
+			<?php nd_link( 'nd_about_linkedin', 'nd-btn', nd_copy( 'nd_linkedin' ) ); ?>
 		</div>
 	</section>
 </main>

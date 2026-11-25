@@ -23,7 +23,7 @@ The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/
 | Design board | Theme file |
 |---|---|
 | `UnderwaterDive.dc.html` (Home) | `front-page.php` |
-| `About.dc.html` | `page-about.php` (story stops = page content, "Dive stop" block pattern) |
+| `About.dc.html` | `page-about.php` (story stops = Page copy fields, `ND_STOPS` slots) |
 | `Projects.dc.html` | `archive-project.php` (+ `taxonomy-project_type.php`) |
 | `PostsIndex.dc.html` | `home.php` (+ `category.php`) |
 | `PostArticle.dc.html` | `single.php` (default post layout) |
@@ -56,9 +56,10 @@ The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/
 - **Pages:** Home (front page), Posts (posts page), About (slug `about`).
 - **Projects:** CPT `project` (archive `/projects/`), taxonomy `project_type` (Client work · Apps & tools · Games). Story fields in post meta via the "Project story" meta box: status, collab, blurb, problem, built, learned, tags, link url/label. Order with Page Attributes → Order. Featured image = card screenshot. Projects use the classic edit screen (no body content).
 - **Posts:** category is the post kind (Notes · Project update · Release). Layout chosen per post via Template. Case-study/release facts come from the "Template details" meta box, which only shows the chosen template's fields (`assets/post-fields.js`; hidden fields are disabled so they aren't saved).
-- **Customizer → Site content:** a section per page (Home, About, Projects, Posts, 404) holds the fixed headline/intro/CTA copy, plus Links & details (GitHub, LinkedIn, email; LinkedIn/email links are hidden until set). Defined once in `nd_copy_fields()`; templates read `nd_copy( 'id' )`. Opening a section jumps the preview to that page; Home/About/Posts edit screens link to their section.
+- **Page copy (Pages → Edit → "Page copy" box):** each page's fixed headline/intro/CTA copy is post meta on that page. Projects (slug `projects`; its URL still serves the project archive) and 404 (slug `not-found`, private) exist as pages only to hold their copy. All five use the classic screen with no body editor; About's story stops are fields too (`ND_STOPS` = 6 slots, empty heading hides a stop). Unset fields fall back to defaults. Page buttons and in-page links are label + link pairs there too (printed with `nd_link()`; empty label hides one). Email/LinkedIn buttons take only a label; their address comes from Links & details. **Customizer → Links & details** holds GitHub, LinkedIn, email (LinkedIn/email hidden until set). All defined once in `nd_copy_fields()`; templates read `nd_copy( 'id' )`.
+- **Menus (Appearance → Menus):** locations "Header navigation" and "Footer links", seeded once as Header (Projects · Posts · About) and Footer (GitHub). Printed as flat links via `nd_menu_links()`; the current section's link gets `aria-current`. With no menu assigned, the header falls back to `nd_default_nav()` and the footer to Links & details.
 - **Fields:** project/post meta fields are typed arrays (`text|textarea|url|select`) in `nd_project_fields()` / `nd_post_fields()`; `register_post_meta` sanitizes by type. Self-check: `lando wp eval-file scripts/check-fields.php`.
-- **Editor:** the block editor loads `style.css` + `editor-style.css` (dark canvas, prose and dive-stop styles) so drafts look like the site.
+- **Editor:** the block editor (posts) loads `style.css` + `editor-style.css` (dark canvas, prose styles) so drafts look like the site.
 - `scripts/seed.php` holds all current real content (from the old site's `src/data/*`, copied to `docs/content-source/`).
 
 ## Still open (placeholders shown as `[brackets]`)

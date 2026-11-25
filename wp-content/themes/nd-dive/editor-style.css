@@ -18,5 +18,3 @@ pre code { padding: 0; background: none; color: #C6E4E7; }
 figure img { border-radius: 14px; }
 figcaption { font-size: 14px; color: var(--nd-faint); }
 
-/* About dive stops: the grid itself comes from style.css; just allow its two columns. */
-.nd-stop { max-width: 900px; }

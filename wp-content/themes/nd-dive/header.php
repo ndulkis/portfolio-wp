@@ -3,12 +3,11 @@
  * Global header. Templates pass a body class modifier via get_header( null, array( 'ocean' => 'abyss' ) ).
  */
 $nd_ocean = $args['ocean'] ?? '';
-$nd_nav   = nd_nav_current();
-$nd_links = array(
-	'projects' => array( 'Projects', get_post_type_archive_link( 'project' ) ),
-	'posts'    => array( 'Posts', get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/' ) ),
-	'about'    => array( 'About', home_url( '/about/' ) ),
-);
+// Links come from Appearance → Menus → "Header navigation". The current section's link is highlighted
+// (e.g. Projects stays current on a project type filter).
+$nd_defaults = nd_default_nav();
+$nd_current  = untrailingslashit( $nd_defaults[ nd_nav_current() ][1] ?? '' );
+$nd_links    = nd_menu_links( 'header', $nd_defaults );
 ?><!doctype html>
 <html <?php language_attributes(); ?>>
 <head>
@@ -24,8 +23,8 @@ $nd_links = array(
 	<header class="nd-header">
 		<a class="nd-logo" href="<?php echo esc_url( home_url( '/' ) ); ?>"><span class="nd-badge" aria-hidden="true">nd</span><?php bloginfo( 'name' ); ?></a>
 		<nav class="nd-nav" aria-label="Primary">
-			<?php foreach ( $nd_links as $key => list( $label, $url ) ) : ?>
-				<a href="<?php echo esc_url( $url ); ?>"<?php echo $key === $nd_nav ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $label ); ?></a>
+			<?php foreach ( $nd_links as list( $label, $url ) ) : ?>
+				<a href="<?php echo esc_url( $url ); ?>"<?php echo $nd_current && untrailingslashit( $url ) === $nd_current ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $label ); ?></a>
 			<?php endforeach; ?>
 		</nav>
 	</header>

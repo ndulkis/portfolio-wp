@@ -141,11 +141,10 @@ img { max-width: 100%; height: auto; }
 .nd-log p { margin: 2px 0 0; }
 .nd-log a { color: var(--nd-ink); font-weight: 600; }
 
-/* About — dive stops (block pattern "nd-dive/stop") */
+/* About — dive stops (Page copy → Story stop fields) */
 .nd-story { padding: 40px 0 24px; border-left: 2px dashed var(--nd-line-strong); display: flex; flex-direction: column; gap: 56px; }
 .nd-story > * { margin: 0; }
 .nd-stop { position: relative; padding-left: 40px; display: grid; grid-template-columns: 140px minmax(0, 680px); gap: 10px 48px; }
-.nd-stop > .wp-block-group__inner-container { display: contents; } /* classic themes wrap Group contents */
 .nd-stop::before { content: ''; position: absolute; left: -8px; top: 10px; width: 14px; height: 14px; border-radius: 50%; background: var(--nd-accent); box-shadow: 0 0 14px rgba(111,235,215,.7); }
 .nd-stop:nth-child(2)::before { background: #3FB8A8; box-shadow: none; }
 .nd-stop:nth-child(3)::before { background: #2A8C86; box-shadow: none; }

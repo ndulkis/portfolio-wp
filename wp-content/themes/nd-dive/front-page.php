@@ -17,8 +17,8 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 			<h1 class="nd-h1 nd-h1--home"><?php echo esc_html( nd_copy( 'nd_home_title' ) ); ?><br><span class="nd-hl"><?php echo esc_html( nd_copy( 'nd_home_highlight' ) ); ?></span></h1>
 			<p class="nd-lede"><?php echo esc_html( nd_copy( 'nd_home_lede' ) ); ?></p>
 			<div class="nd-actions">
-				<a class="nd-btn nd-btn--primary" href="<?php echo esc_url( get_post_type_archive_link( 'project' ) ); ?>">See projects</a>
-				<a class="nd-btn" href="<?php echo esc_url( home_url( '/about/' ) ); ?>">Read my story</a>
+				<?php nd_link( 'nd_home_btn1', 'nd-btn nd-btn--primary' ); ?>
+				<?php nd_link( 'nd_home_btn2', 'nd-btn' ); ?>
 			</div>
 		</div>
 		<?php nd_diver( 'home', 'Illustration of Nathan as a deep-sea diver, drifting at an angle, smiling and waving', 'nd-anim-home' ); ?>
@@ -27,7 +27,7 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 	<section class="nd-section">
 		<div class="nd-section__head">
 			<h2 class="nd-h2">Projects</h2>
-			<a href="<?php echo esc_url( get_post_type_archive_link( 'project' ) ); ?>">View all →</a>
+			<?php nd_link( 'nd_home_all' ); ?>
 		</div>
 		<div class="nd-grid-3">
 			<?php foreach ( $nd_projects as $p ) : $d = nd_project( $p->ID ); ?>
@@ -47,7 +47,7 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 		<div>
 			<h2 class="nd-h2">The short version</h2>
 			<p class="nd-muted"><?php echo esc_html( nd_copy( 'nd_home_short' ) ); ?></p>
-			<p><a href="<?php echo esc_url( home_url( '/about/' ) ); ?>">The longer version →</a></p>
+			<p><?php nd_link( 'nd_home_more' ); ?></p>
 		</div>
 		<div>
 			<h2 class="nd-h2" style="margin-bottom: 20px">Dive log</h2>
