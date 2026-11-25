@@ -1,0 +1,18 @@
+name: portfolio-wp
+recipe: wordpress
+config:
+  webroot: .
+  php: '8.3'
+  via: nginx
+  database: mysql:8.0
+  xdebug: false
+
+tooling:
+  install:
+    service: appserver
+    description: Install WordPress, activate the nd-dive theme and seed content
+    cmd: sh /app/scripts/setup.sh
+  seed:
+    service: appserver
+    description: Re-run the content seed (safe to run twice)
+    cmd: wp eval-file /app/scripts/seed.php

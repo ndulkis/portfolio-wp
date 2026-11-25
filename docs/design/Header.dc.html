@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Global header</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 0; font-family: Inter, system-ui, sans-serif; font-size: 16px; line-height: 1.6; color: #E6F6F7">
+<a href="UnderwaterDive.dc.html" style="display: flex; align-items: center; gap: 10px; font-weight: 600; color: #E6F6F7; text-decoration: none">
+<span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #6FEBD7; color: #6FEBD7; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px">nd</span>
+Nathan Dulkis
+</a>
+<nav aria-label="Primary" style="display: flex; flex-wrap: wrap; gap: 24px; font-size: 15px">
+<sc-for list="{{links}}" as="l" hint-placeholder-count="3">
+<sc-if value="{{l.active}}" hint-placeholder-val="{{false}}">
+<a href="{{l.href}}" aria-current="page" style="color: #6FEBD7; text-decoration: none; padding: 10px 0; border-bottom: 2px solid #6FEBD7">{{l.label}}</a>
+</sc-if>
+<sc-if value="{{l.inactive}}" hint-placeholder-val="{{true}}">
+<a href="{{l.href}}" style="color: #C6E4E7; text-decoration: none; padding: 10px 0; border-bottom: 2px solid transparent">{{l.label}}</a>
+</sc-if>
+</sc-for>
+</nav>
+</header>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["None","Projects","Posts","About"],"default":"None"},"$preview":{"width":1120,"height":84}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active ?? 'None';
+    const links = [
+      { label: 'Projects', href: 'Projects.dc.html' },
+      { label: 'Posts', href: 'PostsIndex.dc.html' },
+      { label: 'About', href: 'About.dc.html' },
+    ].map((l) => ({ ...l, active: l.label === active, inactive: l.label !== active }));
+    return { links };
+  }
+}
+</script>
+</body>
+</html>

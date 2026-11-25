@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Post template — case study</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#02111A}
+a{color:#6FEBD7;text-underline-offset:3px}a:hover{color:#B5F7EC}
+@keyframes nd-jelly{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-22px) scaleY(0.92)}}
+@keyframes nd-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.nd-jelly{animation:nd-jelly 6s ease-in-out infinite}
+.nd-sway{transform-box:fill-box;transform-origin:50% 100%;animation:nd-sway 5s ease-in-out infinite}
+.nd-sway-b{animation-duration:6.5s;animation-delay:-2s}
+@media (max-width:1024px){.nd-decor{display:none}}
+@media (prefers-reduced-motion:reduce){.nd-jelly,.nd-sway{animation:none}}
+</style>
+</helmet>
+<div style="position: relative; overflow: hidden; background-color: #02111A; background-image: radial-gradient(3px 3px at 30px 40px, rgba(230,246,247,0.2), transparent), radial-gradient(2px 2px at 180px 120px, rgba(230,246,247,0.15), transparent), radial-gradient(900px 520px at 70% 0%, rgba(111, 235, 215, 0.16), transparent), linear-gradient(180deg, #0F5266 0%, #0A3446 25%, #05202E 60%, #02111A 100%); background-size: 340px 280px, 340px 280px, 100% 100%, 100% 100%; background-repeat: repeat, repeat, no-repeat, no-repeat; color: #E6F6F7; font-family: Inter, system-ui, sans-serif; font-size: 17px; line-height: 1.7">
+
+<div aria-hidden="true" class="nd-decor nd-jelly" style="position: absolute; top: 1400px; left: 1.5%; width: 52px">
+<svg viewBox="0 0 52 70" width="52" height="70" fill="none"><path d="M4 26a22 22 0 0 1 44 0q-6 4-11 0-5 4-11 0-5 4-11 0-5 4-11 0z" fill="#C9A6FF" fill-opacity="0.55" stroke="#E2D2FF" stroke-width="1.5"></path><path d="M12 30q-4 14 2 26M22 30q4 16-2 34M32 30q-4 14 2 28M42 30q4 12-2 22" stroke="#E2D2FF" stroke-opacity="0.7" stroke-width="1.5" stroke-linecap="round"></path></svg>
+</div>
+
+<div style="position: relative; max-width: 1120px; margin: 0 auto; padding: 0 24px">
+<dc-import name="Header" active="Posts" hint-size="100%,84px"></dc-import>
+
+<section style="padding: clamp(40px, 5vw, 64px) 0 40px">
+<p style="margin: 0 0 20px; font-size: 15px"><a href="PostsIndex.dc.html" style="text-decoration: none">← All posts</a></p>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px">
+<span style="padding: 3px 12px; border-radius: 999px; background: rgba(111, 235, 215, 0.14); color: #6FEBD7; font-size: 13px; font-weight: 600">Project update</span>
+<span style="font-size: 14px; color: #9CC3C8">[DATE] · 6 min read</span>
+</div>
+<h1 style="margin: 0; max-width: 860px; font-size: clamp(38px, 7vw, 56px); font-weight: 700; line-height: 1.05; letter-spacing: -0.03em">Building the UAB alumni site</h1>
+<p style="margin: 20px 0 0; max-width: 640px; font-size: 20px; color: #B4D9DD">A from-scratch WordPress theme that lets university staff publish alumni career stories without a developer.</p>
+</section>
+
+<div style="aspect-ratio: 21 / 9; border-radius: 20px; background: rgba(15, 82, 102, 0.45); border: 1px solid rgba(111, 235, 215, 0.2); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 15px">[Hero screenshot of the finished site]</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 48px; padding: 56px 0 24px; align-items: flex-start">
+<aside aria-label="Project facts" style="flex: 1 1 260px; padding: 24px; border-radius: 16px; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); font-size: 15px">
+<dl style="margin: 0; display: grid; gap: 16px">
+<div><dt style="color: #9CC3C8; font-size: 13px">Client</dt><dd style="margin: 2px 0 0">University of Alabama at Birmingham</dd></div>
+<div><dt style="color: #9CC3C8; font-size: 13px">Built at</dt><dd style="margin: 2px 0 0">Hounder</dd></div>
+<div><dt style="color: #9CC3C8; font-size: 13px">My role</dt><dd style="margin: 2px 0 0">[Your role]</dd></div>
+<div><dt style="color: #9CC3C8; font-size: 13px">Timeline</dt><dd style="margin: 2px 0 0">[Timeline]</dd></div>
+<div><dt style="color: #9CC3C8; font-size: 13px">Stack</dt><dd style="margin: 2px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 13px">wordpress · php · acf · javascript</dd></div>
+</dl>
+<a href="https://sites.uab.edu/blazeabrighterfuture/" style="display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 20px; border-radius: 999px; background: #6FEBD7; color: #04222E; text-decoration: none; font-weight: 600">Visit the site ↗</a>
+</aside>
+
+<div style="flex: 999 1 560px; min-width: 0; max-width: 720px">
+<h2 style="margin: 0 0 12px; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #6FEBD7">01 · the problem</h2>
+<p style="margin: 0 0 40px; font-size: 20px; line-height: 1.6">University staff needed to publish new alumni spotlights on their own, long after launch, without filing a ticket every time.</p>
+<h2 style="margin: 0 0 12px; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #6FEBD7">02 · the approach</h2>
+<p style="margin: 0 0 16px; color: #C6E4E7">A hand-built theme with no parent theme or page builder. Custom blocks and ACF fields give editors structured slots for each story instead of a blank page.</p>
+<p style="margin: 0 0 40px; color: #C6E4E7">[More on decisions and trade-offs.]</p>
+<h2 style="margin: 0 0 12px; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #6FEBD7">03 · the result</h2>
+<p style="margin: 0 0 40px; color: #C6E4E7">[What happened after launch: how staff use it, anything measurable.]</p>
+<h2 style="margin: 0 0 12px; font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 500; color: #6FEBD7">04 · what I learned</h2>
+<p style="margin: 0; color: #C6E4E7">[What this project taught you, and what you’d do differently.]</p>
+</div>
+</div>
+
+<section aria-label="Screenshots" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 40px 0 64px">
+<figure style="margin: 0"><div style="aspect-ratio: 4 / 3; border-radius: 14px; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Screenshot]</div><figcaption style="margin-top: 8px; font-size: 14px; color: #9CC3C8">[Caption]</figcaption></figure>
+<figure style="margin: 0"><div style="aspect-ratio: 4 / 3; border-radius: 14px; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Screenshot]</div><figcaption style="margin-top: 8px; font-size: 14px; color: #9CC3C8">[Caption]</figcaption></figure>
+<figure style="margin: 0"><div style="aspect-ratio: 4 / 3; border-radius: 14px; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Screenshot]</div><figcaption style="margin-top: 8px; font-size: 14px; color: #9CC3C8">[Caption]</figcaption></figure>
+</section>
+
+<nav aria-label="More posts" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; padding: 0 0 72px; font-size: 16px">
+<a href="#" style="display: flex; flex-direction: column; gap: 6px; padding: 24px; border-radius: 16px; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); color: #E6F6F7; text-decoration: none">
+<span style="font-size: 13px; color: #9CC3C8">← Previous</span>
+<span style="font-size: 19px; font-weight: 600; line-height: 1.35">What building for public agencies taught me</span>
+</a>
+<a href="#" style="display: flex; flex-direction: column; gap: 6px; padding: 24px; border-radius: 16px; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); color: #E6F6F7; text-decoration: none; text-align: right">
+<span style="font-size: 13px; color: #9CC3C8">Next →</span>
+<span style="font-size: 19px; font-weight: 600; line-height: 1.35">Bollard 0.1.2 is out</span>
+</a>
+</nav>
+
+<dc-import name="Footer" hint-size="100%,104px"></dc-import>
+</div>
+<svg aria-hidden="true" viewBox="0 0 1280 200" preserveAspectRatio="xMidYMax slice" style="display: block; width: 100%; height: 160px">
+<path d="M0 118Q160 88 320 108T640 102T960 110T1280 96V200H0z" fill="#0C3540"></path>
+<path d="M0 150Q200 128 420 146T860 140T1280 148V200H0z" fill="#3E3B2F"></path>
+<path d="M0 170Q320 160 640 172T1280 166V200H0z" fill="#4B4738"></path>
+<ellipse cx="1010" cy="150" rx="32" ry="14" fill="#2A3638"></ellipse>
+<g class="nd-sway"><path d="M140 152q-14-30 0-60" stroke="#2F8F6F" stroke-width="6" stroke-linecap="round" fill="none"></path></g>
+<g class="nd-sway nd-sway-b"><path d="M1120 150q14-32 0-64t0-56" stroke="#2F8F6F" stroke-width="6" stroke-linecap="round" fill="none"></path></g>
+<path d="M640 168q-12-14 0-22q12 8 0 22z" fill="#E8D9C0"></path>
+</svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":2700}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

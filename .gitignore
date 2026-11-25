@@ -1,0 +1,14 @@
+# Track only our code; WordPress core, uploads and config stay local.
+/*
+!/.gitignore
+!/.lando.yml
+!/README.md
+!/CLAUDE.md
+!/docs/
+!/scripts/
+!/wp-content/
+/wp-content/*
+!/wp-content/themes/
+/wp-content/themes/*
+!/wp-content/themes/nd-dive/
+.DS_Store
