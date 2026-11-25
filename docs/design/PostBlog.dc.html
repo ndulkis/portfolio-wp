@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Post template — blog</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#02111A}
+a{color:#6FEBD7;text-underline-offset:3px}a:hover{color:#B5F7EC}
+@keyframes nd-jelly{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-22px) scaleY(0.92)}}
+@keyframes nd-sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.nd-jelly{animation:nd-jelly 6s ease-in-out infinite}
+.nd-sway{transform-box:fill-box;transform-origin:50% 100%;animation:nd-sway 5s ease-in-out infinite}
+.nd-sway-b{animation-duration:6.5s;animation-delay:-2s}
+.nd-dropcap::first-letter{float:left;font-size:72px;line-height:0.9;font-weight:700;color:#6FEBD7;margin:6px 12px 0 0}
+.nd-card:hover{border-color:rgba(111,235,215,0.5)}
+@media (max-width:1024px){.nd-decor{display:none}}
+@media (prefers-reduced-motion:reduce){.nd-jelly,.nd-sway{animation:none}}
+</style>
+</helmet>
+<div style="position: relative; overflow: hidden; background-color: #02111A; background-image: radial-gradient(3px 3px at 30px 40px, rgba(230,246,247,0.2), transparent), radial-gradient(2px 2px at 180px 120px, rgba(230,246,247,0.15), transparent), radial-gradient(900px 520px at 70% 0%, rgba(111, 235, 215, 0.14), transparent), linear-gradient(180deg, #0F5266 0%, #0A3446 22%, #05202E 55%, #02111A 100%); background-size: 340px 280px, 340px 280px, 100% 100%, 100% 100%; background-repeat: repeat, repeat, no-repeat, no-repeat; color: #E6F6F7; font-family: Inter, system-ui, sans-serif; font-size: 18px; line-height: 1.75">
+
+<div aria-hidden="true" class="nd-decor nd-jelly" style="position: absolute; top: 1500px; left: 4%; width: 44px">
+<svg viewBox="0 0 52 70" width="44" height="60" fill="none"><path d="M4 26a22 22 0 0 1 44 0q-6 4-11 0-5 4-11 0-5 4-11 0-5 4-11 0z" fill="#C9A6FF" fill-opacity="0.5" stroke="#E2D2FF" stroke-width="1.5"></path><path d="M12 30q-4 14 2 26M22 30q4 16-2 34M32 30q-4 14 2 28M42 30q4 12-2 22" stroke="#E2D2FF" stroke-opacity="0.7" stroke-width="1.5" stroke-linecap="round"></path></svg>
+</div>
+
+<div style="position: relative; max-width: 1120px; margin: 0 auto; padding: 0 24px">
+<dc-import name="Header" active="Posts" hint-size="100%,84px"></dc-import>
+</div>
+
+<header style="position: relative; max-width: 960px; margin: 0 auto; padding: 72px 24px 0">
+<p style="margin: 0 0 20px; font-size: 15px"><a href="PostsIndex.dc.html" style="text-decoration: none">← All posts</a></p>
+<div style="max-width: 720px">
+<p style="margin: 0 0 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #6FEBD7">blog</p>
+<h1 style="margin: 0; font-size: clamp(36px, 7vw, 56px); font-weight: 700; line-height: 1.08; letter-spacing: -0.03em">[A personal title — what this one is about]</h1>
+<p style="margin: 20px 0 0; font-size: 21px; line-height: 1.6; color: #B4D9DD">[Summary: one or two sentences in your own voice. Shown here and on the Posts list.]</p>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 28px 0 32px; font-size: 15px; color: #9CC3C8">
+<span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #6FEBD7; color: #6FEBD7; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px">nd</span>
+<span style="color: #E6F6F7; font-weight: 500">Nathan Dulkis</span>
+<span>·</span><span>[DATE]</span><span>·</span><span>4 min read</span>
+</div>
+
+<figure style="margin: 0">
+<div style="aspect-ratio: 21 / 9; border-radius: 20px; background: rgba(15, 82, 102, 0.45); border: 1px solid rgba(111, 235, 215, 0.2); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Cover image]</div>
+</figure>
+
+<dl style="display: flex; flex-wrap: wrap; gap: 12px 40px; margin: 20px 0 0; padding: 16px 24px; border-radius: 16px; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); font-size: 15px; line-height: 1.5">
+<div style="display: flex; gap: 10px; align-items: baseline">
+<dt style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6FEBD7">logged</dt>
+<dd style="margin: 0; color: #E6F6F7">[DATE]</dd>
+</div>
+<div style="display: flex; gap: 10px; align-items: baseline">
+<dt style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6FEBD7">from</dt>
+<dd style="margin: 0; color: #E6F6F7">[CITY]</dd>
+</div>
+<div style="display: flex; gap: 10px; align-items: baseline">
+<dt style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6FEBD7">on repeat</dt>
+<dd style="margin: 0; color: #E6F6F7">[What you were listening to or reading]</dd>
+</div>
+</dl>
+</header>
+
+<article style="position: relative; max-width: 720px; margin: 0 auto; padding: 56px 24px 48px">
+<p class="nd-dropcap" style="margin: 0 0 24px; font-size: 20px; color: #D3ECEE">[Opening paragraph. Start in the moment — where you were and what was going on — before you get to the point.]</p>
+<p style="margin: 0 0 24px; color: #C6E4E7">[Body paragraph.]</p>
+
+<h2 style="margin: 48px 0 16px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">[Section heading]</h2>
+<p style="margin: 0 0 24px; color: #C6E4E7">[Body paragraph.]</p>
+
+<figure style="margin: 32px 0">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px">
+<div style="aspect-ratio: 4 / 3; border-radius: 14px; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Photo]</div>
+<div style="aspect-ratio: 4 / 3; border-radius: 14px; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Photo]</div>
+</div>
+<figcaption style="margin-top: 10px; font-size: 14px; color: #9CC3C8">[Caption for the pair.]</figcaption>
+</figure>
+
+<p style="margin: 0 0 24px; color: #C6E4E7">[Body paragraph.]</p>
+
+<aside style="margin: 32px 0; padding: 20px 24px; border-radius: 16px; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); font-size: 16px; line-height: 1.7; color: #C6E4E7">
+<p style="display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6FEBD7"><svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>side note</p>
+<p style="margin: 0">[A tangent that's worth keeping but would break the flow of the main story.]</p>
+</aside>
+
+<p style="margin: 40px 0; text-align: center; font-size: 26px; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; color: #E6F6F7"><span aria-hidden="true" style="display: block; font-size: 15px; letter-spacing: 0.4em; color: #6FEBD7; margin-bottom: 12px">· · ·</span>[The one line you want people to remember.]</p>
+
+<h2 style="margin: 48px 0 16px; font-size: 28px; font-weight: 600; letter-spacing: -0.01em">[Section heading]</h2>
+<p style="margin: 0 0 24px; color: #C6E4E7">[Closing paragraph.]</p>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; margin: 48px 0 0; padding: 28px 0 0; border-top: 1px solid rgba(111, 235, 215, 0.2)">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 20px; font-weight: 600; color: #E6F6F7">Thanks for reading.</span>
+<span style="font-size: 15px; color: #9CC3C8">Got a thought on this one? I'd like to hear it.</span>
+</div>
+<a href="#" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 999px; background: #6FEBD7; color: #04222E; font-size: 16px; font-weight: 600; text-decoration: none">Reply by email</a>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(111, 235, 215, 0.3); color: #9CC3C8">[tag]</span>
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(111, 235, 215, 0.3); color: #9CC3C8">[tag]</span>
+</div>
+</article>
+
+<div style="position: relative; max-width: 1120px; margin: 0 auto; padding: 0 24px">
+<section aria-labelledby="more-blog" style="padding: 32px 0 72px">
+<h2 id="more-blog" style="margin: 0 0 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #9CC3C8">more from the blog</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px">
+<a href="#" class="nd-card" style="display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); color: #E6F6F7; text-decoration: none">
+<div style="aspect-ratio: 16 / 9; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Cover image]</div>
+<div style="padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #9CC3C8">[DATE]</span>
+<span style="font-size: 19px; font-weight: 600; line-height: 1.35">[Blog post title]</span>
+</div>
+</a>
+<a href="#" class="nd-card" style="display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); color: #E6F6F7; text-decoration: none">
+<div style="aspect-ratio: 16 / 9; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Cover image]</div>
+<div style="padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #9CC3C8">[DATE]</span>
+<span style="font-size: 19px; font-weight: 600; line-height: 1.35">[Blog post title]</span>
+</div>
+</a>
+<a href="#" class="nd-card" style="display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: rgba(4, 34, 46, 0.72); border: 1px solid rgba(111, 235, 215, 0.2); color: #E6F6F7; text-decoration: none">
+<div style="aspect-ratio: 16 / 9; background: rgba(15, 82, 102, 0.45); display: flex; align-items: center; justify-content: center; color: #B4D9DD; font-size: 14px">[Cover image]</div>
+<div style="padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #9CC3C8">[DATE]</span>
+<span style="font-size: 19px; font-weight: 600; line-height: 1.35">[Blog post title]</span>
+</div>
+</a>
+</div>
+</section>
+<dc-import name="Footer" hint-size="100%,104px"></dc-import>
+</div>
+<svg aria-hidden="true" viewBox="0 0 1280 200" preserveAspectRatio="xMidYMax slice" style="display: block; width: 100%; height: 160px">
+<path d="M0 118Q160 88 320 108T640 102T960 110T1280 96V200H0z" fill="#0C3540"></path>
+<path d="M0 150Q200 128 420 146T860 140T1280 148V200H0z" fill="#3E3B2F"></path>
+<path d="M0 170Q320 160 640 172T1280 166V200H0z" fill="#4B4738"></path>
+<g class="nd-sway"><path d="M90 152q-14-30 0-60t0-60" stroke="#2F8F6F" stroke-width="6" stroke-linecap="round" fill="none"></path></g>
+<g class="nd-sway nd-sway-b"><path d="M1160 150q14-32 0-64" stroke="#2F8F6F" stroke-width="6" stroke-linecap="round" fill="none"></path></g>
+</svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":3000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

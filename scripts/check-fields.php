@@ -13,6 +13,14 @@ $post = get_page_by_path( 'bollard-0-1-2-is-out', OBJECT, 'post' ); // Release c
 assert( 'release' === nd_post_layout( $post ) );
 assert( 'project-update' === nd_post_layout( get_page_by_path( 'building-the-uab-alumni-site', OBJECT, 'post' ) ) );
 assert( '' === nd_post_layout( get_page_by_path( 'joined-hounder', OBJECT, 'post' ) ) );
+$blog = get_page_by_path( 'first-blog-post', OBJECT, 'post' );
+assert( 'blog' === nd_post_layout( $blog ) && isset( nd_post_outlines()['blog'] ) ); // Blog: written in the body, has an outline.
+ob_start();
+nd_render_fields_box( $blog, array( 'args' => array( 'fields' => nd_post_fields() ) ) );
+$bhtml = ob_get_clean();
+assert( str_contains( $bhtml, 'name="nd_blog_facts[0][label]" class="widefat" value="logged"' ) ); // Blog rows enabled…
+assert( str_contains( $bhtml, 'name="nd_facts[0][label]" class="widefat" disabled' ) );             // …case-study rows not.
+assert( str_contains( $bhtml, '<p class="nd-outline-row">' ) );                                    // Outline button shown.
 ob_start();
 nd_render_fields_box( $post, array( 'args' => array( 'fields' => nd_post_fields() ) ) );
 $html = ob_get_clean();
@@ -21,7 +29,8 @@ assert( str_contains( $html, 'name="nd_changes[0][type]" class="widefat">' ) ); 
 assert( str_contains( $html, 'name="nd_facts[0][label]" class="widefat" disabled' ) );       // …case-study rows disabled.
 assert( str_contains( $html, 'name="excerpt" class="widefat" rows="3">[One or two sentences' ) );     // Summary = the excerpt.
 assert( str_contains( $html, '<template>' ) && str_contains( $html, '+ Add change' ) );     // Add-row template.
-assert( ! str_contains( nd_post_outline(), '<!--' ) );                                     // Plain HTML for the classic editor.
+assert( ! str_contains( implode( nd_post_outlines() ), '<!--' ) );                         // Plain HTML for the classic editor.
+assert( str_contains( $html, '<p class="nd-outline-row" hidden>' ) );                     // Release: no outline button.
 assert( ! use_block_editor_for_post_type( 'post' ) );
 
 // Rows sanitize: columns by type, empty rows and the "_" marker dropped, order kept.
@@ -48,10 +57,17 @@ assert( 'Lost at sea.' === nd_copy( 'nd_404_title' ) );
 // and removing every row saves an empty list (the "_" marker is still submitted).
 $about = get_page_by_path( 'about' );
 wp_set_current_user( get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) )[0] );
-$_POST = wp_slash( array( 'nd_fields_nonce' => wp_create_nonce( 'nd_fields' ), 'nd_stop1_title' => 'Saved <i>heading</i> C:\\dir' ) );
+assert( 4 === count( nd_copy_rows( 'nd_stops' ) ) && 'Now' === nd_copy_rows( 'nd_glance' )[0]['label'] ); // Defaults until saved.
+$_POST = wp_slash( array(
+	'nd_fields_nonce' => wp_create_nonce( 'nd_fields' ),
+	'nd_about_title'  => 'Saved <i>heading</i> C:\\dir',
+	'nd_stops'        => array( '_' => '', 'new0' => array( 'depth' => '5 m', 'heading' => 'Only stop', 'text' => '' ) ),
+) );
 do_action( 'save_post', $about->ID, $about, true );
-assert( 'Saved heading C:\\dir' === nd_copy( 'nd_stop1_title' ) );
-delete_post_meta( $about->ID, 'nd_stop1_title' );
+assert( 'Saved heading C:\\dir' === nd_copy( 'nd_about_title' ) );
+assert( array( array( 'depth' => '5 m', 'heading' => 'Only stop', 'text' => '' ) ) === nd_copy_rows( 'nd_stops' ) );
+delete_post_meta( $about->ID, 'nd_about_title' );
+delete_post_meta( $about->ID, 'nd_stops' );
 $keep  = get_post_meta( $case->ID, 'nd_facts', true );
 $_POST = wp_slash( array( 'nd_fields_nonce' => wp_create_nonce( 'nd_fields' ), 'nd_facts' => array( '_' => '' ) ) );
 do_action( 'save_post', $case->ID, $case, true );

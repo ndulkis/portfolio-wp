@@ -27,6 +27,9 @@ function nd_asset_ver( $file ) {
 
 const ND_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
 
+/* Galleries are laid out by .nd-prose .gallery in style.css, not WordPress's inline float styles. */
+add_filter( 'use_default_gallery_style', '__return_false' );
+
 add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style( 'nd-fonts', ND_FONTS_URL, array(), null );
 	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array( 'nd-fonts' ), nd_asset_ver( 'style.css' ) );
@@ -65,6 +68,7 @@ function nd_post_layouts() {
 	return array(
 		'release'        => 'templates/post-release.php',
 		'project-update' => 'templates/post-case-study.php',
+		'blog'           => 'templates/post-blog.php',
 	);
 }
 
@@ -83,10 +87,11 @@ add_filter( 'single_template', function ( $template ) {
 	return is_singular( 'post' ) ? locate_template( nd_post_layouts()[ nd_post_layout( get_queried_object() ) ] ?? 'single.php' ) : $template;
 } );
 
-/** Post details: the summary, plus the case study (Project update) and release (Release) fields. */
+/** Post details: the summary, plus the case study (Project update), release (Release) and blog (Blog) fields. */
 function nd_post_fields() {
 	$case = array( 'project-update' );
 	$rel  = array( 'release' );
+	$blog = array( 'blog' );
 	$both = array( 'project-update', 'release' );
 	$text = array( 'label' => 'Text', 'type' => 'textarea' );
 	return array(
@@ -105,6 +110,12 @@ function nd_post_fields() {
 		'nd_download_meta'  => array( 'label' => 'Download details', 'layouts' => $rel, 'help' => 'e.g. "4.1 MB · Free · Apple Silicon · macOS 11+"' ),
 		'nd_link_url'       => array( 'label' => 'Button link', 'type' => 'url', 'layouts' => $both, 'help' => 'Empty = no button.' ),
 		'nd_link_label'     => array( 'label' => 'Button label', 'layouts' => $both, 'help' => 'Empty = "Visit the site ↗" (project update) or "Download ↗" (release).' ),
+		'nd_blog_facts'     => array( 'label' => 'Log details', 'type' => 'rows', 'item' => 'detail', 'layouts' => $blog, 'help' => 'The strip under the cover image. Details with no value are hidden.',
+			'columns' => array( 'label' => array( 'label' => 'Label' ), 'value' => array( 'label' => 'Value' ) ),
+			'default' => array_map( fn( $l ) => array( 'label' => $l, 'value' => '' ), array( 'logged', 'from', 'on repeat' ) ) ),
+		'nd_reply_title'    => array( 'label' => 'Sign-off', 'layouts' => $blog, 'help' => 'Empty = "Thanks for reading."' ),
+		'nd_reply_text'     => array( 'label' => 'Sign-off line', 'layouts' => $blog, 'help' => 'Empty = "Got a thought on this one? I’d like to hear it."' ),
+		'nd_reply_label'    => array( 'label' => 'Reply button label', 'layouts' => $blog, 'help' => 'Empty = "Reply by email". Goes to the email in Customizer → Links & details; hidden until that is set.' ),
 	);
 }
 
@@ -118,11 +129,21 @@ function nd_change_types() {
 	return array( 'new' => 'New', 'improved' => 'Improved', 'fixed' => 'Fixed' );
 }
 
-/** Starter body for a Notes article ("Insert outline" in Post details; also used by the seed). */
-function nd_post_outline() {
-	return '<p>[Opening paragraph. Set up the story in two or three sentences.]</p><p>[Body paragraph.]</p><h2>[Section heading]</h2><p>[Body paragraph.]</p>'
-		. '<blockquote><p>[A pull quote — the one line you want people to remember.]</p></blockquote>'
-		. '<h2>[Section heading]</h2><ul><li>[Takeaway one]</li><li>[Takeaway two]</li><li>[Takeaway three]</li></ul><p>[Closing paragraph.]</p>';
+/*
+ * Starter bodies ("Insert outline" in Post details; also used by the seed), keyed by layout.
+ * The layouts listed here are written in the body (Notes = '', Blog); the others are built from their rows.
+ */
+function nd_post_outlines() {
+	return array(
+		''     => '<p>[Opening paragraph. Set up the story in two or three sentences.]</p><p>[Body paragraph.]</p><h2>[Section heading]</h2><p>[Body paragraph.]</p>'
+			. '<blockquote><p>[A pull quote — the one line you want people to remember.]</p></blockquote>'
+			. '<h2>[Section heading]</h2><ul><li>[Takeaway one]</li><li>[Takeaway two]</li><li>[Takeaway three]</li></ul><p>[Closing paragraph.]</p>',
+		'blog' => '<p>[Opening paragraph. Start in the moment — where you were and what was going on — before you get to the point.]</p><p>[Body paragraph.]</p>'
+			. '<h2>[Section heading]</h2><p>[Body paragraph.]</p><p>[Photos: Add Media → Create gallery, two columns.]</p><p>[Body paragraph.]</p>'
+			. '<aside class="nd-note"><p>[A tangent that’s worth keeping but would break the flow of the main story.]</p></aside>'
+			. '<p class="nd-pull">[The one line you want people to remember.]</p>'
+			. '<h2>[Section heading]</h2><p>[Closing paragraph.]</p>',
+	);
 }
 
 /** Sanitizer for a field definition (also runs on update_post_meta via register_post_meta). */
@@ -204,7 +225,7 @@ add_action( 'edit_form_after_title', function ( $post ) {
 		do_meta_boxes( get_current_screen(), 'nd_top', $post );
 		// Label for the body editor below; post-fields.js shows the hint for the current layout.
 		echo '<div class="nd-body-label"><h2>Body</h2>'
-			. '<p class="description" data-for="notes">The post itself. Use <strong>Insert outline</strong> above for a starting structure.</p>'
+			. '<p class="description" data-for="body">The post itself. Use <strong>Insert outline</strong> above for a starting structure.</p>'
 			. '<p class="description" data-for="layout" hidden>Optional. Anything here (a screenshot, extra notes) shows after the sections or changes.</p></div>';
 	}
 } );
@@ -262,8 +283,10 @@ function nd_render_fields_box( $post, $box ) {
 	echo '</div>';
 	if ( 'post' === $post->post_type ) {
 		printf(
-			'<div class="nd-fields-hint"%s><p>The category picks the layout. <strong>Project update</strong> and <strong>Release</strong> add their own fields here; Notes are written in the body below.</p><p><button type="button" class="button nd-outline">Insert outline</button> <span class="description">Adds starter headings to the body, at the cursor.</span></p></div>',
-			$any ? ' hidden' : ''
+			'<div class="nd-fields-hint"%s><p>The category picks the layout. <strong>Project update</strong>, <strong>Release</strong> and <strong>Blog</strong> add their own fields here; Notes are written in the body below.</p></div>'
+			. '<p class="nd-outline-row"%s><button type="button" class="button nd-outline">Insert outline</button> <span class="description">Adds this layout’s starter headings to the body, at the cursor.</span></p>',
+			$any ? ' hidden' : '',
+			isset( nd_post_outlines()[ $layout ] ) ? '' : ' hidden'
 		);
 	}
 }
@@ -343,14 +366,15 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 		return;
 	}
 	wp_enqueue_style( 'nd-admin', get_theme_file_uri( 'assets/admin.css' ), array(), nd_asset_ver( 'assets/admin.css' ) );
+	wp_enqueue_script( 'nd-rows', get_theme_file_uri( 'assets/rows.js' ), array(), nd_asset_ver( 'assets/rows.js' ), true );
 	if ( 'post' === get_current_screen()->post_type ) {
 		wp_enqueue_script( 'nd-post-fields', get_theme_file_uri( 'assets/post-fields.js' ), array( 'media-upload' ), nd_asset_ver( 'assets/post-fields.js' ), true );
-		// Layout category IDs in precedence order (same rule as nd_post_layout()), and the Notes outline.
+		// Layout category IDs in precedence order (same rule as nd_post_layout()), and the outlines of body-written layouts.
 		$layouts = array();
 		foreach ( array_keys( nd_post_layouts() ) as $slug ) {
 			$layouts[] = array( $slug, (int) get_category_by_slug( $slug )?->term_id );
 		}
-		wp_add_inline_script( 'nd-post-fields', 'window.ndPost = ' . wp_json_encode( array( 'layouts' => $layouts, 'outline' => nd_post_outline() ) ) . ';', 'before' );
+		wp_add_inline_script( 'nd-post-fields', 'window.ndPost = ' . wp_json_encode( array( 'layouts' => $layouts, 'outlines' => nd_post_outlines() ) ) . ';', 'before' );
 	}
 } );
 
@@ -366,10 +390,9 @@ add_action( 'pre_get_posts', function ( $q ) {
  * ── Fixed copy on each page ──
  * Page copy is post meta on its page, edited in Pages → Edit ("Page copy" box).
  * Site-wide links stay in the Customizer. Templates read both with nd_copy( 'id' ).
- * section => array( title, fields: id => array( label, default, type = text|textarea|url|email ) ).
+ * section => array( title, fields: id => array( label, default, type = text|textarea|url|email|rows ) ).
+ * `rows` fields are described with the field definitions above nd_project_fields(); read them with nd_copy_rows( 'id' ).
  */
-// ponytail: fixed number of About story slots; raise it (or switch to a repeater) if the story outgrows it.
-const ND_STOPS = 6;
 
 function nd_copy_fields() {
 	static $fields;
@@ -380,17 +403,12 @@ function nd_copy_fields() {
 	// A button or link: "{$id}_label" + "{$id}_url" (printed with nd_link()). Empty label hides it.
 	$btn = static fn( $id, $name, $label, $url = null ) => array( "{$id}_label" => $f( "{$name} — label", $label, 'text', null === $url ? 'Links to the address in Customizer → Links & details (hidden until set).' : 'Leave empty to hide.' ) )
 		+ ( null === $url ? array() : array( "{$id}_url" => $f( "{$name} — link", $url, 'url', 'A path like /about/ or a full https:// address.' ) ) );
-	// About story stops: nd_stop{n}_depth/_title/_text, ND_STOPS slots; $defaults fill the first ones.
-	$stops = static function ( $defaults ) use ( $f ) {
-		$out = array();
-		foreach ( range( 1, ND_STOPS ) as $n ) {
-			list( $depth, $title, $text ) = $defaults[ $n - 1 ] ?? array( '', '', '' );
-			$out[ "nd_stop{$n}_depth" ] = $f( "Story stop {$n} — depth", $depth, 'text', 1 === $n ? 'The label on the depth line, e.g. "30 m · curious".' : '' );
-			$out[ "nd_stop{$n}_title" ] = $f( "Story stop {$n} — heading", $title, 'text', 1 === $n ? 'Leave a heading empty to hide that stop.' : '' );
-			$out[ "nd_stop{$n}_text" ]  = $f( "Story stop {$n} — text", $text, 'textarea' );
-		}
-		return $out;
+	// A rows field from (column => label) and default rows given as lists in column order.
+	$rows = static function ( $label, $item, $help, $columns, $defaults ) {
+		$cols = array_map( fn( $c ) => is_array( $c ) ? $c : array( 'label' => $c ), $columns );
+		return array( 'label' => $label, 'type' => 'rows', 'item' => $item, 'help' => $help, 'columns' => $cols, 'default' => array_map( fn( $d ) => array_combine( array_keys( $cols ), $d ), $defaults ) );
 	};
+	$text = array( 'label' => 'Text', 'type' => 'textarea' );
 	$fields = array(
 		'nd_links'    => array( 'Links & details', array(
 			'nd_github'   => $f( 'GitHub URL', 'https://github.com/ndulkis', 'url' ),
@@ -410,24 +428,24 @@ function nd_copy_fields() {
 			'nd_about_title'     => $f( 'Headline', 'Hi, I’m Nathan.' ),
 			'nd_about_highlight' => $f( 'Headline — highlighted line', 'Let’s go a little deeper.' ),
 			'nd_about_lede'      => $f( 'Intro', 'I build websites and the systems behind them. Here’s how I got here.', 'textarea' ),
-		) + $stops( array(
-			array( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
-			array( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
-			array( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
-			array( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
-		) ) + array(
-			'nd_now'             => $f( 'At a glance — Now', 'Web developer, Hounder' ),
-			'nd_stack'           => $f( 'At a glance — Stack', 'PHP, Drupal, WordPress, Laravel, React' ),
-			'nd_location'        => $f( 'At a glance — Based in', '[CITY, STATE]' ),
-			'nd_hobbies'         => $f( 'At a glance — Off the clock', '[HOBBIES]' ),
-			'nd_p1_title'        => $f( 'How I work 1 — heading', 'Config in code' ),
-			'nd_p1_text'         => $f( 'How I work 1 — text', 'Every environment rebuilds the same way, and changes get reviewed before production.', 'textarea' ),
-			'nd_p2_title'        => $f( 'How I work 2 — heading', 'Build for the editor' ),
-			'nd_p2_text'         => $f( 'How I work 2 — text', 'Structured fields hold up for years after handoff. Freeform pages decay.', 'textarea' ),
-			'nd_p3_title'        => $f( 'How I work 3 — heading', 'Accessibility first' ),
-			'nd_p3_text'         => $f( 'How I work 3 — text', 'Audit before launch, not after. Cheaper, and nobody gets left out.', 'textarea' ),
-			'nd_p4_title'        => $f( 'How I work 4 — heading', 'Real browsers' ),
-			'nd_p4_text'         => $f( 'How I work 4 — text', 'Support what visitors actually run, including older and locked-down machines.', 'textarea' ),
+			'nd_stops'           => $rows( 'Story stops', 'stop', 'Your story as stops down the depth line, top to bottom.', array( 'depth' => 'Depth label', 'heading' => 'Heading', 'text' => $text ), array(
+				array( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
+				array( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
+				array( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
+				array( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
+			) ),
+			'nd_glance'          => $rows( 'At a glance', 'item', 'The quick-facts card. Items with no value are hidden.', array( 'label' => 'Label', 'value' => 'Value' ), array(
+				array( 'Now', 'Web developer, Hounder' ),
+				array( 'Stack', 'PHP, Drupal, WordPress, Laravel, React' ),
+				array( 'Based in', '[CITY, STATE]' ),
+				array( 'Off the clock', '[HOBBIES]' ),
+			) ),
+			'nd_principles'      => $rows( 'How I work', 'principle', 'Short principles, shown two per row.', array( 'heading' => 'Heading', 'text' => $text ), array(
+				array( 'Config in code', 'Every environment rebuilds the same way, and changes get reviewed before production.' ),
+				array( 'Build for the editor', 'Structured fields hold up for years after handoff. Freeform pages decay.' ),
+				array( 'Accessibility first', 'Audit before launch, not after. Cheaper, and nobody gets left out.' ),
+				array( 'Real browsers', 'Support what visitors actually run, including older and locked-down machines.' ),
+			) ),
 			'nd_about_cta_title' => $f( 'Closing — heading', 'Come say hello.' ),
 			'nd_about_cta_text'  => $f( 'Closing — text', 'Always happy to talk about interesting problems.' ),
 		) + $btn( 'nd_about_email', 'Email button', 'Email me' )
@@ -476,6 +494,11 @@ function nd_page_section( $post_id ) {
 		}
 	}
 	return '';
+}
+
+/** A `rows` copy field: always a list of arrays. */
+function nd_copy_rows( $id ) {
+	return array_values( array_filter( (array) nd_copy( $id ), 'is_array' ) );
 }
 
 /** Copy value with its default: links from the Customizer, the rest from its page. */

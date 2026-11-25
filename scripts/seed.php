@@ -114,6 +114,7 @@ $cat = array(
 	'notes'   => nd_seed_term( 'Notes', 'category' ),
 	'update'  => nd_seed_term( 'Project update', 'category' ),
 	'release' => nd_seed_term( 'Release', 'category' ),
+	'blog'    => nd_seed_term( 'Blog', 'category' ),
 );
 update_option( 'default_category', $cat['notes'] );
 $uncategorized = get_term_by( 'slug', 'uncategorized', 'category' );
@@ -121,7 +122,7 @@ if ( $uncategorized ) {
 	wp_delete_term( $uncategorized->term_id, 'category' );
 }
 
-$article = nd_post_outline();
+$article = nd_post_outlines()[''];
 // Rows for "Post details" lists: $facts( 'Client' => 'UAB', … ), $sections( 'the problem' => 'Text', … ), $changes( array( 'new', 'Text' ), … ).
 $facts    = static fn( $pairs ) => array_map( fn( $l, $v ) => array( 'label' => $l, 'value' => $v ), array_keys( $pairs ), $pairs );
 $sections = static fn( $pairs ) => array_map( fn( $h, $t ) => array( 'heading' => $h, 'text' => $t ), array_keys( $pairs ), $pairs );
@@ -148,6 +149,9 @@ $seed_posts = array(
 			) ),
 			'nd_link_url' => 'https://sites.uab.edu/blazeabrighterfuture/',
 		) ),
+	array( 'first-blog-post', '[A personal title — what this one is about]', 'blog', '', '[Summary: one or two sentences in your own voice.]', nd_post_outlines()['blog'], array(
+		'nd_blog_facts' => $facts( array( 'logged' => '[DATE]', 'from' => '[CITY]', 'on repeat' => '[What you were listening to or reading]' ) ),
+	) ),
 	array( 'bollard-0-1-2-is-out', 'Bollard 0.1.2 is out', 'release', '', '[One or two sentences on what this release is about.]', '', array(
 		'nd_version'       => '0.1.2',
 		'nd_changes'       => $changes( array( 'new', '[New feature]' ), array( 'new', '[New feature]' ), array( 'improved', '[Improvement]' ), array( 'fixed', '[Bug fix]' ) ),
