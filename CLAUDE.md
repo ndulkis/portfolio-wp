@@ -27,8 +27,8 @@ The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/
 | `Projects.dc.html` | `archive-project.php` (+ `taxonomy-project_type.php`) |
 | `PostsIndex.dc.html` | `home.php` (+ `category.php`) |
 | `PostArticle.dc.html` | `single.php` (default post layout) |
-| `PostCaseStudy.dc.html` | `templates/post-case-study.php` (Post → Template: "Case study") |
-| `PostRelease.dc.html` | `templates/post-release.php` (Post → Template: "Release note") |
+| `PostCaseStudy.dc.html` | `templates/post-case-study.php` (posts in category "Project update") |
+| `PostRelease.dc.html` | `templates/post-release.php` (posts in category "Release") |
 | `NotFound.dc.html` | `404.php` |
 | `Header.dc.html` / `Footer.dc.html` | `header.php` / `footer.php` (+ `parts/seafloor.php`) |
 
@@ -55,11 +55,11 @@ The repo tracks only our code (`.gitignore` is a whitelist): `wp-content/themes/
 
 - **Pages:** Home (front page), Posts (posts page), About (slug `about`).
 - **Projects:** CPT `project` (archive `/projects/`), taxonomy `project_type` (Client work · Apps & tools · Games). Story fields in post meta via the "Project story" meta box: status, collab, blurb, problem, built, learned, tags, link url/label. Order with Page Attributes → Order. Featured image = card screenshot. Projects use the classic edit screen (no body content).
-- **Posts:** category is the post kind (Notes · Project update · Release). Layout chosen per post via Template. Case-study/release facts come from the "Template details" meta box, which only shows the chosen template's fields (`assets/post-fields.js`; hidden fields are disabled so they aren't saved).
+- **Posts:** the category is the post kind and picks the layout (`nd_post_layouts()`): Notes → article (`single.php`), Project update → case study, Release → release note. There is no Template choice. Posts use the classic screen with one **Post details** box between the title and the body (`nd_top` context): Summary (the excerpt) for every post, then only the current layout's fields. Project update: **Project facts** and numbered **Sections** (`01 · heading` on the site); Release: version, **Changes** (New / Improved / Fixed, grouped on the site; the summary is the intro), download heading/details; both: button link + label. Facts, sections and changes are `rows` fields (add / ↑↓ / × in `assets/post-fields.js`, styled by `assets/admin.css`, stored as arrays). For those layouts the body editor hides while empty; any body text renders after the rows. Notes are written in the body ("Insert outline" adds `nd_post_outline()`). Hidden fields are disabled so they aren't saved. Featured image is labelled "Cover image"; the byline is the post author.
 - **Page copy (Pages → Edit → "Page copy" box):** each page's fixed headline/intro/CTA copy is post meta on that page. Projects (slug `projects`; its URL still serves the project archive) and 404 (slug `not-found`, private) exist as pages only to hold their copy. All five use the classic screen with no body editor; About's story stops are fields too (`ND_STOPS` = 6 slots, empty heading hides a stop). Unset fields fall back to defaults. Page buttons and in-page links are label + link pairs there too (printed with `nd_link()`; empty label hides one). Email/LinkedIn buttons take only a label; their address comes from Links & details. **Customizer → Links & details** holds GitHub, LinkedIn, email (LinkedIn/email hidden until set). All defined once in `nd_copy_fields()`; templates read `nd_copy( 'id' )`.
 - **Menus (Appearance → Menus):** locations "Header navigation" and "Footer links", seeded once as Header (Projects · Posts · About) and Footer (GitHub). Printed as flat links via `nd_menu_links()`; the current section's link gets `aria-current`. With no menu assigned, the header falls back to `nd_default_nav()` and the footer to Links & details.
 - **Fields:** project/post meta fields are typed arrays (`text|textarea|url|select`) in `nd_project_fields()` / `nd_post_fields()`; `register_post_meta` sanitizes by type. Self-check: `lando wp eval-file scripts/check-fields.php`.
-- **Editor:** the block editor (posts) loads `style.css` + `editor-style.css` (dark canvas, prose styles) so drafts look like the site.
+- **Editor:** the block editor is off for every type (`use_block_editor_for_post_type`); everything is edited on the classic screen with fields in boxes. The post body editor (TinyMCE) loads `style.css` + `editor-style.css` so drafts look like the site.
 - `scripts/seed.php` holds all current real content (from the old site's `src/data/*`, copied to `docs/content-source/`).
 
 ## Still open (placeholders shown as `[brackets]`)

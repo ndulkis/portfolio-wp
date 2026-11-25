@@ -1,23 +1,16 @@
 <?php
 /**
- * Template Name: Case study
- * Template Post Type: post
- *
- * Post template 2 — for project updates. Write the body with H2s like
- * "01 · the problem", "02 · the approach"… Facts come from the "Template details" box.
+ * Post layout 2 — case study, used for posts in the "Project update" category (see nd_post_layouts()).
+ * Facts, numbered sections ("01 · the problem") and the button come from the "Post details" box;
+ * any body text follows the sections.
  * Design: docs/design/PostCaseStudy.dc.html
  */
 get_header();
 nd_decor( 'jelly', 'top: 1400px; left: 1.5%;' );
 the_post();
-$nd_meta = static fn( $key ) => get_post_meta( get_the_ID(), $key, true );
-$nd_facts = array_filter( array(
-	'Client'   => $nd_meta( 'nd_client' ),
-	'Built at' => $nd_meta( 'nd_built_at' ),
-	'My role'  => $nd_meta( 'nd_role' ),
-	'Timeline' => $nd_meta( 'nd_timeline' ),
-	'Stack'    => $nd_meta( 'nd_stack' ),
-) );
+$nd_meta     = static fn( $key ) => get_post_meta( get_the_ID(), $key, true );
+$nd_facts    = array_filter( nd_rows( 'nd_facts' ), fn( $f ) => '' !== ( $f['value'] ?? '' ) );
+$nd_sections = nd_rows( 'nd_sections' );
 ?>
 <main id="main" class="nd-wrap">
 	<section style="padding: clamp(40px, 5vw, 64px) 0 40px">
@@ -35,13 +28,19 @@ $nd_facts = array_filter( array(
 	<div class="nd-case">
 		<aside class="nd-card nd-facts" aria-label="Project facts">
 			<dl>
-				<?php foreach ( $nd_facts as $label => $value ) : ?>
-					<div><dt><?php echo esc_html( $label ); ?></dt><dd<?php echo 'Stack' === $label ? ' class="nd-mono" style="font-size: 13px; color: var(--nd-ink)"' : ''; ?>><?php echo esc_html( $value ); ?></dd></div>
+				<?php foreach ( $nd_facts as $nd_fact ) : ?>
+					<div><dt><?php echo esc_html( $nd_fact['label'] ); ?></dt><dd<?php echo 'stack' === strtolower( $nd_fact['label'] ) ? ' class="nd-mono" style="font-size: 13px; color: var(--nd-ink)"' : ''; ?>><?php echo esc_html( $nd_fact['value'] ); ?></dd></div>
 				<?php endforeach; ?>
 			</dl>
-			<?php if ( $nd_meta( 'nd_link_url' ) ) : ?><a class="nd-btn nd-btn--primary" href="<?php echo esc_url( $nd_meta( 'nd_link_url' ) ); ?>">Visit the site ↗</a><?php endif; ?>
+			<?php if ( $nd_meta( 'nd_link_url' ) ) : ?><a class="nd-btn nd-btn--primary" href="<?php echo esc_url( $nd_meta( 'nd_link_url' ) ); ?>"><?php echo esc_html( $nd_meta( 'nd_link_label' ) ?: 'Visit the site ↗' ); ?></a><?php endif; ?>
 		</aside>
-		<div class="nd-prose" style="font-size: 17px"><?php the_content(); ?></div>
+		<div class="nd-prose" style="font-size: 17px">
+			<?php foreach ( $nd_sections as $nd_i => $nd_section ) : ?>
+				<h2><?php echo esc_html( sprintf( '%02d · %s', $nd_i + 1, $nd_section['heading'] ) ); ?></h2>
+				<?php echo wpautop( esc_html( $nd_section['text'] ) ); // Escaped, then paragraphs. ?>
+			<?php endforeach; ?>
+			<?php the_content(); ?>
+		</div>
 	</div>
 	<?php get_template_part( 'parts/post-nav' ); ?>
 </main>

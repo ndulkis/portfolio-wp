@@ -5,7 +5,7 @@
  * Content model:
  * - Pages: Home (front page), Posts (posts page), About.
  * - Projects: custom post type `project` + `project_type` taxonomy, story fields in post meta.
- * - Posts: category = post kind (Notes / Project update / Release); per-post template picks the layout.
+ * - Posts: the category (Notes / Project update / Release) is the post kind and picks its layout.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -14,25 +14,32 @@ add_action( 'after_setup_theme', function () {
 	add_theme_support( 'title-tag' );
 	add_theme_support( 'post-thumbnails' );
 	add_theme_support( 'html5', array( 'search-form', 'gallery', 'caption', 'style', 'script' ) );
-	add_theme_support( 'editor-styles' );
-	add_theme_support( 'dark-editor-style' );
-	// The block editor scopes these to the canvas: site tokens from style.css, prose from editor-style.css.
-	add_editor_style( array( ND_FONTS_URL, 'style.css', 'editor-style.css' ) );
+	// The post body editor (TinyMCE) reads like the site: tokens from style.css, prose from editor-style.css.
+	$css = static fn( $file ) => get_theme_file_uri( $file ) . '?ver=' . nd_asset_ver( $file );
+	add_editor_style( array( ND_FONTS_URL, $css( 'style.css' ), $css( 'editor-style.css' ) ) );
 	register_nav_menus( array( 'header' => 'Header navigation', 'footer' => 'Footer links' ) );
 } );
+
+/** Version for a theme asset: its last-modified time, so browsers pick up every edit instead of a cached copy. */
+function nd_asset_ver( $file ) {
+	return (string) filemtime( get_theme_file_path( $file ) );
+}
 
 const ND_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
 
 add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style( 'nd-fonts', ND_FONTS_URL, array(), null );
-	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array( 'nd-fonts' ), wp_get_theme()->get( 'Version' ) );
+	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array( 'nd-fonts' ), nd_asset_ver( 'style.css' ) );
 } );
 
 /* ── Projects ─────────────────────────────────────────── */
 
 /*
- * Field definitions: key => array( label, type = text|textarea|url|select, help, options, templates ).
- * `templates` (post fields only) lists the post templates the field belongs to.
+ * Field definitions: key => array( label, type = text|textarea|url|email|select|rows, help, options, default, layouts ).
+ * `rows` fields are lists the editor can add to, remove from and reorder: `columns` defines one row
+ * (column => field definition), `item` names one row ("+ Add fact"), `default` holds rows for new posts.
+ * `layouts` (post fields only) lists the post layouts (category slugs) the field belongs to.
+ * `core` (post fields only) maps the field to a WP_Post property that core saves itself (the excerpt).
  */
 
 /** Story fields shown on project cards. */
@@ -50,20 +57,72 @@ function nd_project_fields() {
 	);
 }
 
-/** Extra fields for the case study and release post templates. */
-function nd_post_fields() {
-	$case = 'templates/post-case-study.php';
-	$rel  = 'templates/post-release.php';
+/*
+ * Post layouts: category slug => template file. A post uses the first layout whose category it has;
+ * anything else (Notes) is the article layout, single.php.
+ */
+function nd_post_layouts() {
 	return array(
-		'nd_client'        => array( 'label' => 'Client', 'templates' => array( $case ) ),
-		'nd_built_at'      => array( 'label' => 'Built at', 'templates' => array( $case ), 'help' => 'Optional, e.g. "Hounder".' ),
-		'nd_role'          => array( 'label' => 'My role', 'templates' => array( $case ) ),
-		'nd_timeline'      => array( 'label' => 'Timeline', 'templates' => array( $case ), 'help' => 'e.g. "Jan – Apr 2026"' ),
-		'nd_stack'         => array( 'label' => 'Stack', 'templates' => array( $case ), 'help' => 'Separate with " · "' ),
-		'nd_version'       => array( 'label' => 'Version', 'templates' => array( $rel ), 'help' => 'Without the "v", e.g. 0.1.2' ),
-		'nd_download_meta' => array( 'label' => 'Download details', 'templates' => array( $rel ), 'help' => 'e.g. "4.1 MB · Free · Apple Silicon · macOS 11+"' ),
-		'nd_link_url'      => array( 'label' => 'Link URL', 'type' => 'url', 'templates' => array( $case, $rel ), 'help' => 'Case study: "Visit the site" button. Release: "Download" button. Leave empty to hide.' ),
+		'release'        => 'templates/post-release.php',
+		'project-update' => 'templates/post-case-study.php',
 	);
+}
+
+/** Layout (category slug) of a post, or '' for the article layout. */
+function nd_post_layout( $post ) {
+	foreach ( array_keys( nd_post_layouts() ) as $slug ) {
+		if ( has_category( $slug, $post ) ) {
+			return $slug;
+		}
+	}
+	return '';
+}
+
+add_filter( 'single_template', function ( $template ) {
+	// The category decides, so a stale per-post template choice can't override it.
+	return is_singular( 'post' ) ? locate_template( nd_post_layouts()[ nd_post_layout( get_queried_object() ) ] ?? 'single.php' ) : $template;
+} );
+
+/** Post details: the summary, plus the case study (Project update) and release (Release) fields. */
+function nd_post_fields() {
+	$case = array( 'project-update' );
+	$rel  = array( 'release' );
+	$both = array( 'project-update', 'release' );
+	$text = array( 'label' => 'Text', 'type' => 'textarea' );
+	return array(
+		'excerpt'           => array( 'label' => 'Summary', 'type' => 'textarea', 'core' => 'post_excerpt', 'help' => 'One or two sentences. Shown on the posts list, and as the intro on case studies and releases.' ),
+		'nd_facts'          => array( 'label' => 'Project facts', 'type' => 'rows', 'item' => 'fact', 'layouts' => $case, 'help' => 'The card beside the case study. Facts with no value are hidden.',
+			'columns' => array( 'label' => array( 'label' => 'Label' ), 'value' => array( 'label' => 'Value' ) ),
+			'default' => array_map( fn( $l ) => array( 'label' => $l, 'value' => '' ), array( 'Client', 'Built at', 'My role', 'Timeline', 'Stack' ) ) ),
+		'nd_sections'       => array( 'label' => 'Sections', 'type' => 'rows', 'item' => 'section', 'numbered' => true, 'layouts' => $case, 'help' => 'Numbered automatically: "01 · the problem".',
+			'columns' => array( 'heading' => array( 'label' => 'Heading' ), 'text' => $text ),
+			'default' => array_map( fn( $h ) => array( 'heading' => $h, 'text' => '' ), array( 'the problem', 'the approach', 'the result', 'what I learned' ) ) ),
+		'nd_version'        => array( 'label' => 'Version', 'layouts' => $rel, 'help' => 'Without the "v", e.g. 0.1.2' ),
+		'nd_changes'        => array( 'label' => 'Changes', 'type' => 'rows', 'item' => 'change', 'layouts' => $rel, 'help' => 'Grouped under New, Improved and Fixed on the post.',
+			'columns' => array( 'type' => array( 'label' => 'Type', 'type' => 'select', 'options' => nd_change_types() ), 'text' => array( 'label' => 'Change' ) ),
+			'default' => array_map( fn( $t ) => array( 'type' => $t, 'text' => '' ), array_keys( nd_change_types() ) ) ),
+		'nd_download_title' => array( 'label' => 'Download heading', 'layouts' => $rel, 'help' => 'Empty = "Get this release". The version is added after it.' ),
+		'nd_download_meta'  => array( 'label' => 'Download details', 'layouts' => $rel, 'help' => 'e.g. "4.1 MB · Free · Apple Silicon · macOS 11+"' ),
+		'nd_link_url'       => array( 'label' => 'Button link', 'type' => 'url', 'layouts' => $both, 'help' => 'Empty = no button.' ),
+		'nd_link_label'     => array( 'label' => 'Button label', 'layouts' => $both, 'help' => 'Empty = "Visit the site ↗" (project update) or "Download ↗" (release).' ),
+	);
+}
+
+/** A post's saved rows for a `rows` field: always a list of arrays (empty when never saved). */
+function nd_rows( $key, $post_id = 0 ) {
+	return array_values( array_filter( (array) get_post_meta( $post_id ?: get_the_ID(), $key, true ), 'is_array' ) );
+}
+
+/** Release change groups, in display order. */
+function nd_change_types() {
+	return array( 'new' => 'New', 'improved' => 'Improved', 'fixed' => 'Fixed' );
+}
+
+/** Starter body for a Notes article ("Insert outline" in Post details; also used by the seed). */
+function nd_post_outline() {
+	return '<p>[Opening paragraph. Set up the story in two or three sentences.]</p><p>[Body paragraph.]</p><h2>[Section heading]</h2><p>[Body paragraph.]</p>'
+		. '<blockquote><p>[A pull quote — the one line you want people to remember.]</p></blockquote>'
+		. '<h2>[Section heading]</h2><ul><li>[Takeaway one]</li><li>[Takeaway two]</li><li>[Takeaway three]</li></ul><p>[Closing paragraph.]</p>';
 }
 
 /** Sanitizer for a field definition (also runs on update_post_meta via register_post_meta). */
@@ -73,6 +132,25 @@ function nd_field_sanitizer( $field ) {
 		'url'      => static fn( $v ) => esc_url_raw( $v ),
 		'email'    => static fn( $v ) => sanitize_email( $v ),
 		'select'   => static fn( $v ) => is_string( $v ) && array_key_exists( $v, $field['options'] ) ? $v : array_key_first( $field['options'] ),
+		// Rows: each column sanitized by its own type; rows with no text (selects aside) are dropped.
+		'rows'     => static function ( $rows ) use ( $field ) {
+			$out = array();
+			foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue; // The empty marker that lets "remove every row" save.
+				}
+				$clean = array();
+				$text  = '';
+				foreach ( $field['columns'] as $col => $def ) {
+					$clean[ $col ] = nd_field_sanitizer( $def )( $row[ $col ] ?? '' );
+					$text         .= 'select' === ( $def['type'] ?? '' ) ? '' : $clean[ $col ];
+				}
+				if ( '' !== $text ) {
+					$out[] = $clean;
+				}
+			}
+			return $out;
+		},
 		default    => static fn( $v ) => sanitize_text_field( $v ),
 	};
 }
@@ -104,66 +182,135 @@ add_action( 'init', function () {
 	$page_fields = array_merge( ...array_column( array_diff_key( nd_copy_fields(), array( 'nd_links' => 0 ) ), 1 ) );
 	foreach ( array( 'project' => nd_project_fields(), 'post' => nd_post_fields(), 'page' => $page_fields ) as $type => $fields ) {
 		foreach ( $fields as $key => $field ) {
-			register_post_meta( $type, $key, array( 'type' => 'string', 'single' => true, 'show_in_rest' => true, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
+			if ( empty( $field['core'] ) ) {
+				$rows = 'rows' === ( $field['type'] ?? '' );
+				register_post_meta( $type, $key, array( 'type' => $rows ? 'array' : 'string', 'single' => true, 'show_in_rest' => ! $rows, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
+			}
 		}
 	}
+
 } );
 
 /* Simple meta boxes so the fields are editable without a plugin. */
 add_action( 'add_meta_boxes', function () {
 	add_meta_box( 'nd-project', 'Project story', 'nd_render_fields_box', 'project', 'normal', 'high', array( 'fields' => nd_project_fields() ) );
-	add_meta_box( 'nd-post', 'Template details', 'nd_render_fields_box', 'post', 'normal', 'default', array( 'fields' => nd_post_fields() ) );
+	// Posts: one "Post details" box (summary included) between the title and the body ("nd_top", printed below).
+	remove_meta_box( 'postexcerpt', 'post', 'normal' );
+	add_meta_box( 'nd-post', 'Post details', 'nd_render_fields_box', 'post', 'nd_top', 'high', array( 'fields' => nd_post_fields() ) );
+} );
+
+add_action( 'edit_form_after_title', function ( $post ) {
+	if ( 'post' === $post->post_type ) {
+		do_meta_boxes( get_current_screen(), 'nd_top', $post );
+		// Label for the body editor below; post-fields.js shows the hint for the current layout.
+		echo '<div class="nd-body-label"><h2>Body</h2>'
+			. '<p class="description" data-for="notes">The post itself. Use <strong>Insert outline</strong> above for a starting structure.</p>'
+			. '<p class="description" data-for="layout" hidden>Optional. Anything here (a screenshot, extra notes) shows after the sections or changes.</p></div>';
+	}
+} );
+
+/* Keep Post details under the title: drop it from any other column in a user's saved (dragged) box order. */
+add_filter( 'get_user_option_meta-box-order_post', function ( $order ) {
+	foreach ( is_array( $order ) ? $order : array() as $context => $ids ) {
+		if ( 'nd_top' !== $context ) {
+			$order[ $context ] = implode( ',', array_diff( explode( ',', $ids ), array( 'nd-post' ) ) );
+		}
+	}
+	return $order;
+} );
+
+/* Never let Screen Options hide Post details. */
+add_filter( 'hidden_meta_boxes', fn( $hidden, $screen ) => 'post' === $screen->id ? array_diff( $hidden, array( 'nd-post' ) ) : $hidden, 10, 2 );
+
+/* The featured image is a post's cover (posts list + case study hero). */
+add_filter( 'post_type_labels_post', function ( $labels ) {
+	$labels->featured_image        = 'Cover image';
+	$labels->set_featured_image    = 'Set cover image';
+	$labels->remove_featured_image = 'Remove cover image';
+	$labels->use_featured_image    = 'Use as cover image';
+	return $labels;
 } );
 
 /*
- * Renders typed fields. Post fields that don't belong to the post's template are hidden and
- * disabled (so they aren't submitted); assets/post-fields.js re-toggles them when the
- * template is changed in the editor.
+ * Renders typed fields, label above input. Post fields that don't belong to the post's layout are
+ * hidden and disabled (so they aren't submitted); assets/post-fields.js re-toggles them when the
+ * category is changed and runs the row buttons.
  */
 function nd_render_fields_box( $post, $box ) {
 	wp_nonce_field( 'nd_fields', 'nd_fields_nonce' );
-	$template = get_page_template_slug( $post );
-	$any      = false;
-	echo '<table class="form-table" role="presentation">';
+	$layout = 'post' === $post->post_type ? nd_post_layout( $post ) : '';
+	$any    = false;
+	echo '<div class="nd-fields">';
 	foreach ( $box['args']['fields'] as $key => $field ) {
-		$value = metadata_exists( 'post', $post->ID, $key ) ? get_post_meta( $post->ID, $key, true ) : ( $field['default'] ?? '' );
-		$attrs = sprintf( 'id="%1$s" name="%1$s" class="widefat"', esc_attr( $key ) );
-		$off   = isset( $field['templates'] ) && ! in_array( $template, $field['templates'], true );
-		$any   = $any || ! $off;
-		if ( $off ) {
-			$attrs .= ' disabled';
+		if ( ! empty( $field['core'] ) ) {
+			$value = $post->{$field['core']};
+		} else {
+			$value = metadata_exists( 'post', $post->ID, $key ) ? get_post_meta( $post->ID, $key, true ) : ( $field['default'] ?? '' );
 		}
-		switch ( $field['type'] ?? 'text' ) {
-			case 'textarea':
-				$input = sprintf( '<textarea %s rows="3">%s</textarea>', $attrs, esc_textarea( $value ) );
-				break;
-			case 'select':
-				$input = sprintf( '<select %s>', $attrs );
-				foreach ( $field['options'] as $opt => $opt_label ) {
-					$input .= sprintf( '<option value="%s"%s>%s</option>', esc_attr( $opt ), selected( $value, $opt, false ), esc_html( $opt_label ) );
-				}
-				$input .= '</select>';
-				break;
-			default:
-				$input = sprintf( '<input type="%s" %s value="%s">', 'url' === ( $field['type'] ?? '' ) ? 'url' : 'text', $attrs, esc_attr( $value ) );
-		}
+		$off  = isset( $field['layouts'] ) && ! in_array( $layout, $field['layouts'], true );
+		$any  = $any || ( isset( $field['layouts'] ) && ! $off );
+		$rows = 'rows' === ( $field['type'] ?? '' );
 		printf(
-			'<tr%s%s><th><label for="%s">%s</label></th><td>%s%s</td></tr>',
-			isset( $field['templates'] ) ? ' data-templates="' . esc_attr( implode( ' ', $field['templates'] ) ) . '"' : '',
-			$off ? ' style="display:none"' : '',
-			esc_attr( $key ),
-			esc_html( $field['label'] ),
-			$input, // Built from escaped parts above.
-			empty( $field['help'] ) ? '' : '<p class="description">' . esc_html( $field['help'] ) . '</p>'
+			'<div class="nd-field"%s%s>%s%s%s</div>',
+			isset( $field['layouts'] ) ? ' data-layouts="' . esc_attr( implode( ' ', $field['layouts'] ) ) . '"' : '',
+			$off ? ' hidden' : '',
+			$rows ? '<span class="nd-field__label">' . esc_html( $field['label'] ) . '</span>' : '<label class="nd-field__label" for="' . esc_attr( $key ) . '">' . esc_html( $field['label'] ) . '</label>',
+			empty( $field['help'] ) ? '' : '<p class="description">' . esc_html( $field['help'] ) . '</p>',
+			nd_field_input( $key, $field, $value, $off, $key ) // Built from escaped parts.
 		); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
-	echo '</table>';
+	echo '</div>';
 	if ( 'post' === $post->post_type ) {
-		printf( '<p class="nd-fields-hint"%s>Choose the <strong>Case study</strong> or <strong>Release note</strong> template (Post → Template) to fill in its details. Articles don’t need any.</p>', $any ? ' style="display:none"' : '' );
+		printf(
+			'<div class="nd-fields-hint"%s><p>The category picks the layout. <strong>Project update</strong> and <strong>Release</strong> add their own fields here; Notes are written in the body below.</p><p><button type="button" class="button nd-outline">Insert outline</button> <span class="description">Adds starter headings to the body, at the cursor.</span></p></div>',
+			$any ? ' hidden' : ''
+		);
 	}
 }
 
-/** The editable fields a post has: project story, post template details, or its page copy. */
+/** One input (escaped HTML). Rows render their own list of inputs named $name[row][column]. */
+function nd_field_input( $name, $field, $value, $disabled, $id = '' ) {
+	$attrs = sprintf( '%sname="%s" class="widefat"%s', $id ? 'id="' . esc_attr( $id ) . '" ' : '', esc_attr( $name ), $disabled ? ' disabled' : '' );
+	switch ( $field['type'] ?? 'text' ) {
+		case 'textarea':
+			return sprintf( '<textarea %s rows="3">%s</textarea>', $attrs, esc_textarea( $value ) );
+		case 'select':
+			$out = sprintf( '<select %s>', $attrs );
+			foreach ( $field['options'] as $opt => $opt_label ) {
+				$out .= sprintf( '<option value="%s"%s>%s</option>', esc_attr( $opt ), selected( $value, $opt, false ), esc_html( $opt_label ) );
+			}
+			return $out . '</select>';
+		case 'rows':
+			$row = static function ( $i, $values ) use ( $name, $field, $disabled ) {
+				$cols = '';
+				foreach ( $field['columns'] as $col => $def ) {
+					$cols .= sprintf( '<label class="nd-row__col nd-row__col--%s"><span>%s</span>%s</label>', esc_attr( $def['type'] ?? 'text' ), esc_html( $def['label'] ), nd_field_input( "{$name}[{$i}][{$col}]", $def, $values[ $col ] ?? '', $disabled ) );
+				}
+				return '<li class="nd-row"><div class="nd-row__cols">' . $cols . '</div><div class="nd-row__tools">'
+					. '<button type="button" class="button-link nd-up" aria-label="Move up" title="Move up">↑</button>'
+					. '<button type="button" class="button-link nd-down" aria-label="Move down" title="Move down">↓</button>'
+					. '<button type="button" class="button-link nd-remove" aria-label="Remove" title="Remove">×</button></div></li>';
+			};
+			$items = '';
+			foreach ( is_array( $value ) ? array_values( $value ) : array() as $i => $values ) {
+				$items .= $row( $i, $values );
+			}
+			return sprintf(
+				'<div class="nd-rows%s"><input type="hidden" name="%s[_]" value=""%s><ol class="nd-rows__list">%s</ol><template>%s</template><button type="button" class="button nd-rows__add">+ Add %s</button></div>',
+				empty( $field['numbered'] ) ? '' : ' nd-rows--numbered',
+				esc_attr( $name ),
+				$disabled ? ' disabled' : '',
+				$items,
+				$row( '__i__', array() ),
+				esc_html( $field['item'] )
+			);
+		default:
+			$type = in_array( $field['type'] ?? '', array( 'url', 'email' ), true ) ? $field['type'] : 'text';
+			return sprintf( '<input type="%s" %s value="%s">', $type, $attrs, esc_attr( $value ) );
+	}
+}
+
+/** The editable fields a post has: project story, post details, or its page copy. */
 function nd_fields_for( $post ) {
 	return match ( $post->post_type ) {
 		'project' => nd_project_fields(),
@@ -180,19 +327,30 @@ add_action( 'save_post', function ( $post_id, $post ) {
 	if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
 		return;
 	}
-	foreach ( array_keys( nd_fields_for( $post ) ) as $key ) {
-		if ( isset( $_POST[ $key ] ) ) {
-			update_post_meta( $post_id, $key, wp_unslash( $_POST[ $key ] ) ); // Sanitized by register_post_meta.
+	foreach ( nd_fields_for( $post ) as $key => $field ) {
+		if ( empty( $field['core'] ) && isset( $_POST[ $key ] ) ) {
+			// update_post_meta() unslashes itself; register_post_meta sanitizes.
+			update_post_meta( $post_id, $key, $_POST[ $key ] ); // phpcs:ignore WordPress.Security
 		}
 	}
 }, 10, 2 );
 
-/* Projects are form-only (no body), so the classic screen is quicker than an empty block canvas. */
-add_filter( 'use_block_editor_for_post_type', fn( $use, $type ) => 'project' === $type ? false : $use, 10, 2 );
+/* One editing style everywhere: the classic screen, with each type's fields in a box (projects, pages, posts). */
+add_filter( 'use_block_editor_for_post_type', '__return_false' );
 
-add_action( 'enqueue_block_editor_assets', function () {
-	if ( 'post' === get_current_screen()?->post_type ) {
-		wp_enqueue_script( 'nd-post-fields', get_theme_file_uri( 'assets/post-fields.js' ), array( 'wp-data', 'wp-editor' ), wp_get_theme()->get( 'Version' ), true );
+add_action( 'admin_enqueue_scripts', function ( $hook ) {
+	if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) ) {
+		return;
+	}
+	wp_enqueue_style( 'nd-admin', get_theme_file_uri( 'assets/admin.css' ), array(), nd_asset_ver( 'assets/admin.css' ) );
+	if ( 'post' === get_current_screen()->post_type ) {
+		wp_enqueue_script( 'nd-post-fields', get_theme_file_uri( 'assets/post-fields.js' ), array( 'media-upload' ), nd_asset_ver( 'assets/post-fields.js' ), true );
+		// Layout category IDs in precedence order (same rule as nd_post_layout()), and the Notes outline.
+		$layouts = array();
+		foreach ( array_keys( nd_post_layouts() ) as $slug ) {
+			$layouts[] = array( $slug, (int) get_category_by_slug( $slug )?->term_id );
+		}
+		wp_add_inline_script( 'nd-post-fields', 'window.ndPost = ' . wp_json_encode( array( 'layouts' => $layouts, 'outline' => nd_post_outline() ) ) . ';', 'before' );
 	}
 } );
 
@@ -352,15 +510,12 @@ function nd_link( $id, $class = '', $url = null ) {
 	}
 }
 
-/* The theme's pages are built from their copy fields (plus projects/posts), so they get the classic screen with just the copy box. */
-add_filter( 'use_block_editor_for_post', fn( $use, $post ) => 'page' === $post->post_type && nd_page_section( $post->ID ) ? false : $use, 10, 2 );
-
 add_action( 'add_meta_boxes_page', function ( $post ) {
 	$section = nd_page_section( $post->ID );
 	if ( ! $section ) {
 		return;
 	}
-	remove_post_type_support( 'page', 'editor' );
+	remove_post_type_support( 'page', 'editor' ); // Built from their copy fields (plus projects/posts), so no body.
 	add_meta_box( 'nd-page-copy', 'Page copy', 'nd_render_fields_box', 'page', 'normal', 'high', array( 'fields' => nd_fields_for( $post ) ) );
 } );
 
@@ -439,7 +594,9 @@ function nd_decor( $kind, $style ) {
 
 /** "5 min read" */
 function nd_reading_time( $post = null ) {
-	$words = str_word_count( wp_strip_all_tags( get_post_field( 'post_content', $post ) ) );
+	$post  = get_post( $post );
+	$rows  = array_merge( nd_rows( 'nd_sections', $post->ID ), nd_rows( 'nd_changes', $post->ID ) );
+	$words = str_word_count( wp_strip_all_tags( $post->post_content . ' ' . implode( ' ', array_column( $rows, 'text' ) ) ) );
 	return max( 1, (int) ceil( $words / 200 ) ) . ' min read';
 }
 
