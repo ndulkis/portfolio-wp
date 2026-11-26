@@ -97,6 +97,17 @@ update_post_meta( $proj->ID, 'nd_tags', 'macos · markdown, swift' );
 assert( array( array( 'tag' => 'macos' ), array( 'tag' => 'markdown' ), array( 'tag' => 'swift' ) ) === get_post_meta( $proj->ID, 'nd_tags', true ) );
 assert( 'macos · markdown · swift' === nd_project( $proj->ID )['tags'] );
 update_post_meta( $proj->ID, 'nd_tags', $keep );
+// Project order: a new project at Order 2 takes that spot and the rest move down; numbers stay 1…n.
+$order = static fn() => array_map( 'intval', wp_list_pluck( get_posts( array( 'post_type' => 'project', 'post_status' => 'any', 'orderby' => 'menu_order', 'order' => 'ASC', 'numberposts' => -1 ) ), 'menu_order', 'ID' ) );
+$before = $order();
+$new    = wp_insert_post( array( 'post_type' => 'project', 'post_title' => 'nd order check', 'post_status' => 'draft', 'menu_order' => 2 ) );
+$after  = $order();
+assert( 2 === $after[ $new ] && range( 1, count( $after ) ) === array_values( $after ) );
+assert( 3 === $after[ array_keys( $before )[1] ] );                                     // Old second project is now third.
+wp_update_post( array( 'ID' => $new, 'menu_order' => 0 ) );                               // Empty order → last.
+assert( count( $after ) === $order()[ $new ] );
+wp_delete_post( $new, true );
+foreach ( $before as $pid => $n ) { $GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, array( 'menu_order' => $n ), array( 'ID' => $pid ) ); clean_post_cache( $pid ); }
 // Menus: an assigned menu's items, otherwise the fallback minus empty links.
 $saved = get_theme_mod( 'nav_menu_locations' );
 set_theme_mod( 'nav_menu_locations', array() );

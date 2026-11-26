@@ -106,7 +106,7 @@ $projects = array(
 	) ),
 );
 foreach ( $projects as $i => list( $slug, $title, $type, $meta ) ) {
-	$id = nd_seed_post( array( 'post_type' => 'project', 'post_name' => $slug, 'post_title' => $title, 'menu_order' => $i ), $meta );
+	$id = nd_seed_post( array( 'post_type' => 'project', 'post_name' => $slug, 'post_title' => $title, 'menu_order' => $i + 1 ), $meta );
 	wp_set_object_terms( $id, nd_seed_term( $type, 'project_type' ), 'project_type' );
 }
 

@@ -390,6 +390,33 @@ add_action( 'pre_get_posts', function ( $q ) {
 } );
 
 /*
+ * Saving a project renumbers all projects 1, 2, 3… with this one at its Order: the others at or below it
+ * move down one, so no two share a number. Order 0 (left empty) or past the end puts it last.
+ */
+add_action( 'save_post_project', function ( $post_id, $post ) {
+	if ( in_array( $post->post_status, array( 'auto-draft', 'trash', 'inherit' ), true ) ) {
+		return;
+	}
+	$ids = get_posts( array(
+		'post_type'   => 'project',
+		'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ),
+		'exclude'     => array( $post_id ),
+		'orderby'     => array( 'menu_order' => 'ASC', 'date' => 'DESC' ),
+		'numberposts' => -1,
+		'fields'      => 'ids',
+	) );
+	$pos = (int) $post->menu_order;
+	array_splice( $ids, $pos < 1 || $pos > count( $ids ) ? count( $ids ) : $pos - 1, 0, array( $post_id ) );
+	global $wpdb;
+	foreach ( $ids as $i => $id ) {
+		if ( (int) get_post_field( 'menu_order', $id ) !== $i + 1 ) {
+			$wpdb->update( $wpdb->posts, array( 'menu_order' => $i + 1 ), array( 'ID' => $id ) ); // Direct, so it doesn't re-run this hook.
+			clean_post_cache( $id );
+		}
+	}
+}, 10, 2 );
+
+/*
  * ── Fixed copy on each page ──
  * Page copy is post meta on its page, edited in Pages → Edit ("Page copy" box).
  * Site-wide links stay in the Customizer. Templates read both with nd_copy( 'id' ).
@@ -425,6 +452,7 @@ function nd_copy_fields() {
 			'nd_home_highlight' => $f( 'Headline — highlighted line', 'And small tools.' ),
 			'nd_home_lede'      => $f( 'Intro', 'I’m Nathan, a web developer at Hounder.', 'textarea' ),
 			'nd_home_buttons'   => $buttons( array( array( 'See projects', '/projects/' ), array( 'Read my story', '/about/' ) ) ),
+			'nd_home_log_empty' => $f( '"Dive log" when there are no posts yet', 'Nothing logged yet. The first entries are on their way down.' ),
 			'nd_home_short'     => $f( '"The short version"', 'I got into software by automating things I didn’t want to do by hand. Now I build sites for counties, airports, and utilities, where a broken page means someone can’t renew a permit.', 'textarea' ),
 		) + $btn( 'nd_home_all', 'Projects "view all" link', 'View all →', '/projects/' )
 			+ $btn( 'nd_home_more', '"The short version" link', 'The longer version →', '/about/' ) ),
@@ -466,6 +494,7 @@ function nd_copy_fields() {
 			'nd_posts_title'     => $f( 'Headline', 'Messages from' ),
 			'nd_posts_highlight' => $f( 'Headline — highlighted line', 'down here.' ),
 			'nd_posts_lede'      => $f( 'Intro', 'Project updates, release notes, and things I’m learning along the way.', 'textarea' ),
+			'nd_posts_empty'     => $f( 'Shown when there are no posts yet', 'No messages yet. The first ones are on their way down.' ),
 		) ),
 		'nd_404'      => array( '404 page', array(
 			'nd_404_title'   => $f( 'Headline', 'Lost at sea.' ),

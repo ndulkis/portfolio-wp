@@ -50,15 +50,19 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 		</div>
 		<div>
 			<h2 class="nd-h2" style="margin-bottom: 20px">Dive log</h2>
-			<ol class="nd-log">
-				<?php foreach ( $nd_posts as $p ) : ?>
-					<li>
-						<p class="nd-mono"><?php echo esc_html( get_the_date( 'M j, Y', $p ) . ' · ' . strtolower( nd_post_kind( $p ) ) ); ?></p>
-						<p><a href="<?php echo esc_url( get_permalink( $p ) ); ?>"><?php echo esc_html( get_the_title( $p ) ); ?></a></p>
-						<?php if ( has_excerpt( $p ) ) : ?><p class="nd-muted" style="font-size: 15px"><?php echo esc_html( get_the_excerpt( $p ) ); ?></p><?php endif; ?>
-					</li>
-				<?php endforeach; ?>
-			</ol>
+			<?php if ( $nd_posts ) : ?>
+				<ol class="nd-log">
+					<?php foreach ( $nd_posts as $p ) : ?>
+						<li>
+							<p class="nd-mono"><?php echo esc_html( get_the_date( 'M j, Y', $p ) . ' · ' . strtolower( nd_post_kind( $p ) ) ); ?></p>
+							<p><a href="<?php echo esc_url( get_permalink( $p ) ); ?>"><?php echo esc_html( get_the_title( $p ) ); ?></a></p>
+							<?php if ( has_excerpt( $p ) ) : ?><p class="nd-muted" style="font-size: 15px"><?php echo esc_html( get_the_excerpt( $p ) ); ?></p><?php endif; ?>
+						</li>
+					<?php endforeach; ?>
+				</ol>
+			<?php else : ?>
+				<p class="nd-muted"><?php echo esc_html( nd_copy( 'nd_home_log_empty' ) ); ?></p>
+			<?php endif; ?>
 		</div>
 	</section>
 </main>

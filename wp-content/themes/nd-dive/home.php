@@ -28,6 +28,10 @@ $nd_first     = true;
 		<?php endforeach; ?>
 	</nav>
 
+	<?php if ( ! have_posts() ) : ?>
+		<p class="nd-muted" style="padding: 8px 0 64px"><?php echo esc_html( nd_copy( 'nd_posts_empty' ) ); ?></p>
+	<?php endif; ?>
+
 	<?php if ( have_posts() ) : the_post(); ?>
 		<a class="nd-featured" href="<?php the_permalink(); ?>">
 			<?php nd_slot( get_the_ID(), 'Cover image' ); ?>
@@ -40,20 +44,22 @@ $nd_first     = true;
 		</a>
 	<?php endif; ?>
 
-	<ol class="nd-rows">
-		<?php while ( have_posts() ) : the_post(); ?>
-			<li>
-				<a class="nd-row" href="<?php the_permalink(); ?>">
-					<span class="nd-row__date"><?php echo esc_html( get_the_date() ); ?></span>
-					<span class="nd-row__main">
-						<span class="nd-row__title"><?php the_title(); ?></span>
-						<span class="nd-muted" style="font-size: 15px"><?php echo esc_html( get_the_excerpt() ); ?></span>
-					</span>
-					<span class="nd-row__type"><?php echo esc_html( nd_post_kind() ); ?></span>
-				</a>
-			</li>
-		<?php endwhile; ?>
-	</ol>
+	<?php if ( have_posts() ) : // The rest, after the featured one. ?>
+		<ol class="nd-rows">
+			<?php while ( have_posts() ) : the_post(); ?>
+				<li>
+					<a class="nd-row" href="<?php the_permalink(); ?>">
+						<span class="nd-row__date"><?php echo esc_html( get_the_date() ); ?></span>
+						<span class="nd-row__main">
+							<span class="nd-row__title"><?php the_title(); ?></span>
+							<span class="nd-muted" style="font-size: 15px"><?php echo esc_html( get_the_excerpt() ); ?></span>
+						</span>
+						<span class="nd-row__type"><?php echo esc_html( nd_post_kind() ); ?></span>
+					</a>
+				</li>
+			<?php endwhile; ?>
+		</ol>
+	<?php endif; ?>
 	<?php the_posts_pagination(); ?>
 </main>
 <?php
