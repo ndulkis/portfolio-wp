@@ -1,4 +1,4 @@
-# Track only our code; WordPress core, uploads and config stay local.
+# Track our code and the plugins (updated through git: see CLAUDE.md); WordPress core, uploads and config stay local.
 /*
 !/.gitignore
 !/.lando.yml
@@ -11,4 +11,6 @@
 !/wp-content/themes/
 /wp-content/themes/*
 !/wp-content/themes/nd-dive/
+!/wp-content/plugins/
+!/wp-content/mu-plugins/
 .DS_Store

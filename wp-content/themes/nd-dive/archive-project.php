@@ -63,7 +63,7 @@ $nd_total   = wp_count_posts( 'project' )->publish;
 			<h2 class="nd-h2" style="margin-bottom: 6px"><?php echo esc_html( nd_copy( 'nd_projects_cta_title' ) ); ?></h2>
 			<p class="nd-muted" style="margin: 0"><?php echo esc_html( nd_copy( 'nd_projects_cta_text' ) ); ?></p>
 		</div>
-		<a class="nd-btn nd-btn--primary" href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ); ?>">Read the posts</a>
+		<?php nd_link( 'nd_projects_cta', 'nd-btn nd-btn--primary' ); ?>
 	</section>
 </main>
 <?php

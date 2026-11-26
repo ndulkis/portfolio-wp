@@ -1,0 +1,33 @@
+/* Edit screens: the theme's field boxes (Post details, Project story, Page copy). */
+.nd-fields { display: grid; gap: 20px; max-width: 880px; padding: 4px 0 8px; }
+.nd-field[hidden], .nd-fields-hint[hidden], #postdivrich[hidden], .nd-body-label [hidden], .nd-body-label[hidden] { display: none; }
+.nd-field__label { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 600; }
+.nd-field > .description { margin: 0 0 6px; }
+
+/* Rows: one card per item, inputs side by side, tools on the right. */
+.nd-rows__list { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 8px; }
+.nd-rows--numbered .nd-rows__list { counter-reset: nd-row; }
+.nd-row { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 8px 10px; border: 1px solid #dcdcde; border-radius: 6px; background: #f6f7f7; }
+.nd-rows--numbered .nd-row::before { counter-increment: nd-row; content: counter(nd-row, decimal-leading-zero); padding-top: 26px; font: 600 13px/1 ui-monospace, monospace; color: #646970; }
+.nd-row__cols { flex: 1; display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.nd-row__col { flex: 1 1 200px; }
+.nd-row__col--select { flex: 0 0 140px; }
+.nd-row__col--textarea { flex-basis: 100%; }
+.nd-row__col > span { display: block; margin-bottom: 2px; font-size: 12px; color: #646970; }
+/* Column captions show on the first row only (still read out on every row). */
+.nd-row:not(:first-child) .nd-row__col > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.nd-row__tools { display: flex; gap: 2px; padding-top: 22px; }
+.nd-row:not(:first-child) .nd-row__tools, .nd-rows--numbered .nd-row:not(:first-child)::before { padding-top: 4px; }
+.nd-row__tools .button-link { width: 28px; height: 28px; border-radius: 4px; font-size: 16px; line-height: 28px; text-align: center; text-decoration: none; color: #50575e; }
+.nd-row__tools .button-link:hover, .nd-row__tools .button-link:focus { background: #dcdcde; color: #1d2327; }
+.nd-row__tools .nd-remove:hover, .nd-row__tools .nd-remove:focus { background: #fcf0f1; color: #b32d2e; }
+.nd-row:first-child .nd-up, .nd-row:last-child .nd-down { visibility: hidden; }
+
+.nd-fields-hint { max-width: 880px; padding: 4px 0; }
+.nd-fields-hint p { margin: 0 0 8px; }
+
+/* Post body: a label above the editor, and no TinyMCE status bar (an empty white strip / "p » strong" path). */
+.nd-body-label { margin: 24px 0 8px; }
+.nd-body-label h2 { margin: 0 0 2px; padding: 0; font-size: 14px; font-weight: 600; }
+.nd-body-label .description { margin: 0; }
+#wp-content-wrap div.mce-statusbar { display: none; }

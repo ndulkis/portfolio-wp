@@ -11,9 +11,7 @@ nd_decor( 'angler', 'bottom: 300px; left: 3%;' );
 		<h1 class="nd-h1"><?php echo esc_html( nd_copy( 'nd_404_title' ) ); ?></h1>
 		<p class="nd-lede" style="max-width: 480px"><?php echo esc_html( nd_copy( 'nd_404_lede' ) ); ?></p>
 		<div class="nd-actions">
-			<a class="nd-btn nd-btn--primary" href="<?php echo esc_url( home_url( '/' ) ); ?>">Back to the surface</a>
-			<a class="nd-btn" href="<?php echo esc_url( get_post_type_archive_link( 'project' ) ); ?>">See projects</a>
-			<a class="nd-btn" href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ); ?>">Read posts</a>
+			<?php nd_buttons( 'nd_404_buttons' ); ?>
 		</div>
 	</div>
 	<?php nd_diver( '404', 'Illustration of Nathan as a deep-sea diver, confused, holding a map upside down', 'nd-anim-soft' ); ?>

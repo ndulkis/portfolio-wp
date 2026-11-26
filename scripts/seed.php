@@ -1,4 +1,5 @@
 <?php
+defined( 'WP_CLI' ) || exit; // CLI only: this repo is the web root on the live site.
 /**
  * Seed local content. Run with: lando seed  (wp eval-file scripts/seed.php)
  * Idempotent — matches existing content by slug and updates it.
@@ -16,7 +17,9 @@ function nd_seed_term( $name, $tax ) {
 
 function nd_seed_post( $args, $meta = array() ) {
 	$existing = get_page_by_path( $args['post_name'], OBJECT, $args['post_type'] ?? 'post' );
-	$args     = array_merge( array( 'post_status' => 'publish', 'post_type' => 'post' ), $args );
+	// WP-CLI has no current user, so set the author (the post byline) to the site admin.
+	$author   = get_users( array( 'role' => 'administrator', 'number' => 1, 'fields' => 'ID' ) )[0] ?? 0;
+	$args     = array_merge( array( 'post_status' => 'publish', 'post_type' => 'post', 'post_author' => $author ), $args );
 	if ( $existing ) {
 		$args['ID'] = $existing->ID;
 	}
@@ -31,10 +34,6 @@ function nd_seed_post( $args, $meta = array() ) {
 	return $id;
 }
 
-$p  = static fn( $t ) => "<!-- wp:paragraph --><p>{$t}</p><!-- /wp:paragraph -->";
-$h2 = static fn( $t ) => "<!-- wp:heading --><h2 class=\"wp-block-heading\">{$t}</h2><!-- /wp:heading -->";
-$ul = static fn( ...$items ) => '<!-- wp:list --><ul class="wp-block-list">' . implode( '', array_map( fn( $i ) => "<!-- wp:list-item --><li>{$i}</li><!-- /wp:list-item -->", $items ) ) . '</ul><!-- /wp:list -->';
-
 /* Clean out the WordPress defaults. */
 foreach ( array( array( 'hello-world', 'post' ), array( 'sample-page', 'page' ) ) as list( $slug, $type ) ) {
 	$d = get_page_by_path( $slug, OBJECT, $type );
@@ -46,23 +45,17 @@ foreach ( array( array( 'hello-world', 'post' ), array( 'sample-page', 'page' ) 
 /* ── Pages ─────────────────────────────────────────── */
 $home  = nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'home', 'post_title' => 'Home' ) );
 $posts = nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'posts', 'post_title' => 'Posts' ) );
-nd_seed_post( array(
-	'post_type'    => 'page',
-	'post_name'    => 'about',
-	'post_title'   => 'About',
-	'post_content' => implode( '', array(
-		nd_stop_markup( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
-		nd_stop_markup( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
-		nd_stop_markup( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
-		nd_stop_markup( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
-	) ),
-) );
+/* About, Projects and 404 have no body: their copy is Pages → Edit → "Page copy" (defaults in nd_copy_fields()). */
+nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'about', 'post_title' => 'About', 'post_content' => '' ) );
+nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'projects', 'post_title' => 'Projects', 'menu_order' => 1 ) );
+nd_seed_post( array( 'post_type' => 'page', 'post_name' => 'not-found', 'post_title' => '404 — Not found', 'post_status' => 'private', 'menu_order' => 9 ) );
 update_option( 'show_on_front', 'page' );
 update_option( 'page_on_front', $home );
 update_option( 'page_for_posts', $posts );
 update_option( 'blogdescription', 'I build websites. And small tools.' );
 
 /* ── Projects ──────────────────────────────────────── */
+// nd_tags is a list field; the "a · b · c" text below is split into one row per tag when saved.
 $projects = array(
 	array( 'uab-blaze-a-brighter-future', 'UAB — Blaze a Brighter Future', 'Client work', array(
 		'nd_status' => 'live', 'nd_collab' => 'Built at Hounder',
@@ -114,7 +107,7 @@ $projects = array(
 	) ),
 );
 foreach ( $projects as $i => list( $slug, $title, $type, $meta ) ) {
-	$id = nd_seed_post( array( 'post_type' => 'project', 'post_name' => $slug, 'post_title' => $title, 'menu_order' => $i ), $meta );
+	$id = nd_seed_post( array( 'post_type' => 'project', 'post_name' => $slug, 'post_title' => $title, 'menu_order' => $i + 1 ), $meta );
 	wp_set_object_terms( $id, nd_seed_term( $type, 'project_type' ), 'project_type' );
 }
 
@@ -123,6 +116,7 @@ $cat = array(
 	'notes'   => nd_seed_term( 'Notes', 'category' ),
 	'update'  => nd_seed_term( 'Project update', 'category' ),
 	'release' => nd_seed_term( 'Release', 'category' ),
+	'blog'    => nd_seed_term( 'Blog', 'category' ),
 );
 update_option( 'default_category', $cat['notes'] );
 $uncategorized = get_term_by( 'slug', 'uncategorized', 'category' );
@@ -130,30 +124,44 @@ if ( $uncategorized ) {
 	wp_delete_term( $uncategorized->term_id, 'category' );
 }
 
-$article = static fn() => $p( '[Opening paragraph. Set up the story in two or three sentences.]' ) . $p( '[Body paragraph.]' ) . $h2( '[Section heading]' ) . $p( '[Body paragraph.]' )
-	. '<!-- wp:quote --><blockquote class="wp-block-quote"><!-- wp:paragraph --><p>[A pull quote — the one line you want people to remember.]</p><!-- /wp:paragraph --></blockquote><!-- /wp:quote -->'
-	. $h2( '[Section heading]' ) . $ul( '[Takeaway one]', '[Takeaway two]', '[Takeaway three]' ) . $p( '[Closing paragraph.]' );
+$article = nd_post_outlines()[''];
+// Rows for "Post details" lists: $facts( 'Client' => 'UAB', … ), $sections( 'the problem' => 'Text', … ), $changes( array( 'new', 'Text' ), … ).
+$facts    = static fn( $pairs ) => array_map( fn( $l, $v ) => array( 'label' => $l, 'value' => $v ), array_keys( $pairs ), $pairs );
+$sections = static fn( $pairs ) => array_map( fn( $h, $t ) => array( 'heading' => $h, 'text' => $t ), array_keys( $pairs ), $pairs );
+$changes  = static fn( ...$rows ) => array_map( fn( $c ) => array( 'type' => $c[0], 'text' => $c[1] ), $rows );
 
 $seed_posts = array(
-	array( 'joined-hounder', 'Joined Hounder', 'notes', '', '2026-04-01 09:00:00', '[One-line excerpt.]', $article(), array() ),
-	array( 'auditing-for-accessibility-before-launch', 'Auditing for accessibility before launch', 'notes', '', '', '[One-line excerpt.]', $article(), array() ),
-	array( 'starting-buck-et-list-brands', 'Starting Buck-et List Brands', 'update', 'templates/post-case-study.php', '', '[One-line excerpt.]',
-		$h2( '01 · the problem' ) . $p( 'A niche hunting and outdoor apparel brand needs a storefront.' ) . $h2( '02 · the approach' ) . $p( '[Stack and architecture decisions.]' ),
-		array( 'nd_client' => 'Buck-et List Brands', 'nd_role' => '[Your role]', 'nd_timeline' => '[Timeline]', 'nd_stack' => 'e-commerce' ) ),
-	array( 'config-in-code-not-in-the-database', 'Config in code, not in the database', 'notes', '', '', '[One-line excerpt.]', $article(), array() ),
-	array( 'what-building-for-public-agencies-taught-me', 'What building for public agencies taught me', 'notes', '', '', '[One-line excerpt.]', $article(), array() ),
-	array( 'building-the-uab-alumni-site', 'Building the UAB alumni site', 'update', 'templates/post-case-study.php', '',
+	array( 'joined-hounder', 'Joined Hounder', 'notes', '2026-04-01 09:00:00', '[One-line excerpt.]', $article, array() ),
+	array( 'auditing-for-accessibility-before-launch', 'Auditing for accessibility before launch', 'notes', '', '[One-line excerpt.]', $article, array() ),
+	array( 'starting-buck-et-list-brands', 'Starting Buck-et List Brands', 'update', '', '[One-line excerpt.]', '', array(
+		'nd_facts'    => $facts( array( 'Client' => 'Buck-et List Brands', 'My role' => '[Your role]', 'Timeline' => '[Timeline]', 'Stack' => 'e-commerce' ) ),
+		'nd_sections' => $sections( array( 'the problem' => 'A niche hunting and outdoor apparel brand needs a storefront.', 'the approach' => '[Stack and architecture decisions.]' ) ),
+	) ),
+	array( 'config-in-code-not-in-the-database', 'Config in code, not in the database', 'notes', '', '[One-line excerpt.]', $article, array() ),
+	array( 'what-building-for-public-agencies-taught-me', 'What building for public agencies taught me', 'notes', '', '[One-line excerpt.]', $article, array() ),
+	array( 'building-the-uab-alumni-site', 'Building the UAB alumni site', 'update', '',
 		'A from-scratch WordPress theme that lets university staff publish alumni career stories without a developer.',
-		$h2( '01 · the problem' ) . $p( 'University staff needed to publish new alumni spotlights on their own, long after launch, without filing a ticket every time.' )
-		. $h2( '02 · the approach' ) . $p( 'A hand-built theme with no parent theme or page builder. Custom blocks and ACF fields give editors structured slots for each story instead of a blank page.' ) . $p( '[More on decisions and trade-offs.]' )
-		. $h2( '03 · the result' ) . $p( '[What happened after launch: how staff use it, anything measurable.]' )
-		. $h2( '04 · what I learned' ) . $p( '[What this project taught you, and what you’d do differently.]' ),
-		array( 'nd_client' => 'University of Alabama at Birmingham', 'nd_built_at' => 'Hounder', 'nd_role' => '[Your role]', 'nd_timeline' => '[Timeline]', 'nd_stack' => 'wordpress · php · acf · javascript', 'nd_link_url' => 'https://sites.uab.edu/blazeabrighterfuture/' ) ),
-	array( 'bollard-0-1-2-is-out', 'Bollard 0.1.2 is out', 'release', 'templates/post-release.php', '', '[One-line summary of what changed.]',
-		$p( '[One or two sentences on what this release is about.]' ) . $h2( 'New' ) . $ul( '[New feature]', '[New feature]' ) . $h2( 'Improved' ) . $ul( '[Improvement]' ) . $h2( 'Fixed' ) . $ul( '[Bug fix]' ),
-		array( 'nd_version' => '0.1.2', 'nd_download_meta' => '4.1 MB · Free · Apple Silicon · macOS 11+', 'nd_link_url' => 'https://bollardapp.download' ) ),
+		'', array(
+			'nd_facts'    => $facts( array( 'Client' => 'University of Alabama at Birmingham', 'Built at' => 'Hounder', 'My role' => '[Your role]', 'Timeline' => '[Timeline]', 'Stack' => 'wordpress · php · acf · javascript' ) ),
+			'nd_sections' => $sections( array(
+				'the problem'    => 'University staff needed to publish new alumni spotlights on their own, long after launch, without filing a ticket every time.',
+				'the approach'   => "A hand-built theme with no parent theme or page builder. Custom blocks and ACF fields give editors structured slots for each story instead of a blank page.\n\n[More on decisions and trade-offs.]",
+				'the result'     => '[What happened after launch: how staff use it, anything measurable.]',
+				'what I learned' => '[What this project taught you, and what you’d do differently.]',
+			) ),
+			'nd_link_url' => 'https://sites.uab.edu/blazeabrighterfuture/',
+		) ),
+	array( 'first-blog-post', '[A personal title — what this one is about]', 'blog', '', '[Summary: one or two sentences in your own voice.]', nd_post_outlines()['blog'], array(
+		'nd_blog_facts' => $facts( array( 'logged' => '[DATE]', 'from' => '[CITY]', 'on repeat' => '[What you were listening to or reading]' ) ),
+	) ),
+	array( 'bollard-0-1-2-is-out', 'Bollard 0.1.2 is out', 'release', '', '[One or two sentences on what this release is about.]', '', array(
+		'nd_version'       => '0.1.2',
+		'nd_changes'       => $changes( array( 'new', '[New feature]' ), array( 'new', '[New feature]' ), array( 'improved', '[Improvement]' ), array( 'fixed', '[Bug fix]' ) ),
+		'nd_download_meta' => '4.1 MB · Free · Apple Silicon · macOS 11+',
+		'nd_link_url'      => 'https://bollardapp.download',
+	) ),
 );
-foreach ( $seed_posts as $i => list( $slug, $title, $kind, $template, $date, $excerpt, $content, $meta ) ) {
+foreach ( $seed_posts as $i => list( $slug, $title, $kind, $date, $excerpt, $content, $meta ) ) {
 	$args = array(
 		'post_name'     => $slug,
 		'post_title'    => $title,
@@ -164,7 +172,35 @@ foreach ( $seed_posts as $i => list( $slug, $title, $kind, $template, $date, $ex
 		'post_date'     => $date ?: wp_date( 'Y-m-d H:i:s', strtotime( '-' . ( count( $seed_posts ) - 1 - $i ) . ' weeks' ) ),
 	);
 	$id = nd_seed_post( $args, $meta );
-	update_post_meta( $id, '_wp_page_template', $template ?: 'default' );
+	// Leftovers from earlier versions: per-post templates (the category decides now) and the old fixed fact fields.
+	foreach ( array( '_wp_page_template', 'nd_client', 'nd_built_at', 'nd_role', 'nd_timeline', 'nd_stack' ) as $old ) {
+		delete_post_meta( $id, $old );
+	}
 }
 
-WP_CLI::success( 'Seeded pages, projects and posts.' );
+/* ── Menus (Appearance → Menus). Created once; re-seeding leaves your edits alone. ── */
+$locations = get_theme_mod( 'nav_menu_locations', array() );
+foreach ( array(
+	'header' => array( 'Header', array(
+		array( 'title' => 'Projects', 'type' => 'post_type_archive', 'object' => 'project' ),
+		array( 'title' => 'Posts', 'type' => 'post_type', 'object' => 'page', 'object-id' => $posts ),
+		array( 'title' => 'About', 'type' => 'post_type', 'object' => 'page', 'object-id' => get_page_by_path( 'about' )->ID ),
+	) ),
+	'footer' => array( 'Footer', array(
+		array( 'title' => 'GitHub', 'type' => 'custom', 'url' => nd_copy( 'nd_github' ) ),
+	) ),
+) as $location => list( $name, $items ) ) {
+	if ( wp_get_nav_menu_object( $name ) ) {
+		WP_CLI::log( "Menu exists: {$name}" );
+	} else {
+		$menu = wp_create_nav_menu( $name );
+		foreach ( $items as $item ) {
+			wp_update_nav_menu_item( $menu, 0, array_combine( array_map( fn( $k ) => "menu-item-{$k}", array_keys( $item ) ), $item ) + array( 'menu-item-status' => 'publish' ) );
+		}
+		WP_CLI::log( "Created menu: {$name}" );
+	}
+	$locations[ $location ] = $locations[ $location ] ?? wp_get_nav_menu_object( $name )->term_id;
+}
+set_theme_mod( 'nav_menu_locations', $locations );
+
+WP_CLI::success( 'Seeded pages, projects, posts and menus.' );

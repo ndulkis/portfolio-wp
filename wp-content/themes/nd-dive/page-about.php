@@ -1,7 +1,7 @@
 <?php
 /**
- * About (page slug "about"). The story stops are the page content — add more with the
- * "Dive stop" block pattern. Design: docs/design/About.dc.html
+ * About (page slug "about"). All copy comes from the page's "Page copy" box (Pages → Edit);
+ * story stops, At a glance and How I work are lists there (add / reorder / remove). Design: docs/design/About.dc.html
  */
 get_header();
 nd_decor( 'fish', 'top: 300px; right: 6%;' );
@@ -20,24 +20,29 @@ $nd_email = nd_copy( 'nd_email' );
 	</section>
 
 	<section class="nd-story" aria-label="My story">
-		<?php while ( have_posts() ) : the_post(); the_content(); endwhile; ?>
+		<?php foreach ( nd_copy_rows( 'nd_stops' ) as $nd_stop ) : ?>
+			<div class="nd-stop">
+				<p class="nd-stop__depth"><?php echo esc_html( $nd_stop['depth'] ); ?></p>
+				<?php if ( $nd_stop['heading'] ) : ?><h2><?php echo esc_html( $nd_stop['heading'] ); ?></h2><?php endif; ?>
+				<?php echo wpautop( esc_html( $nd_stop['text'] ) ); // Escaped, then paragraphs. ?>
+			</div>
+		<?php endforeach; ?>
 	</section>
 
 	<section class="nd-glance">
 		<div class="nd-card">
 			<h2>At a glance</h2>
 			<dl>
-				<dt>Now</dt><dd><?php echo esc_html( nd_copy( 'nd_now' ) ); ?></dd>
-				<dt>Stack</dt><dd><?php echo esc_html( nd_copy( 'nd_stack' ) ); ?></dd>
-				<dt>Based in</dt><dd><?php echo esc_html( nd_copy( 'nd_location' ) ); ?></dd>
-				<dt>Off the clock</dt><dd><?php echo esc_html( nd_copy( 'nd_hobbies' ) ); ?></dd>
+				<?php foreach ( nd_copy_rows( 'nd_glance' ) as $nd_item ) : ?>
+					<?php if ( '' !== $nd_item['value'] ) : ?><dt><?php echo esc_html( $nd_item['label'] ); ?></dt><dd><?php echo esc_html( $nd_item['value'] ); ?></dd><?php endif; ?>
+				<?php endforeach; ?>
 			</dl>
 		</div>
 		<div class="nd-card">
 			<h2>How I work</h2>
 			<div class="nd-principles">
-				<?php foreach ( range( 1, 4 ) as $i ) : ?>
-					<div><h3><?php echo esc_html( nd_copy( "nd_p{$i}_title" ) ); ?></h3><p><?php echo esc_html( nd_copy( "nd_p{$i}_text" ) ); ?></p></div>
+				<?php foreach ( nd_copy_rows( 'nd_principles' ) as $nd_principle ) : ?>
+					<div><h3><?php echo esc_html( $nd_principle['heading'] ); ?></h3><p><?php echo esc_html( $nd_principle['text'] ); ?></p></div>
 				<?php endforeach; ?>
 			</div>
 		</div>
@@ -49,9 +54,9 @@ $nd_email = nd_copy( 'nd_email' );
 			<p class="nd-muted" style="margin: 0"><?php echo esc_html( nd_copy( 'nd_about_cta_text' ) ); ?></p>
 		</div>
 		<div class="nd-actions" style="margin: 0">
-			<?php if ( $nd_email ) : ?><a class="nd-btn nd-btn--primary" href="<?php echo esc_url( 'mailto:' . antispambot( $nd_email ) ); ?>">Email me</a><?php endif; ?>
-			<a class="nd-btn" href="<?php echo esc_url( get_theme_file_uri( 'assets/resume.pdf' ) ); ?>">Download résumé</a>
-			<?php if ( nd_copy( 'nd_linkedin' ) ) : ?><a class="nd-btn" href="<?php echo esc_url( nd_copy( 'nd_linkedin' ) ); ?>">LinkedIn ↗</a><?php endif; ?>
+			<?php nd_link( 'nd_about_email', 'nd-btn nd-btn--primary', $nd_email ? 'mailto:' . antispambot( $nd_email ) : '' ); ?>
+			<?php nd_link( 'nd_about_resume', 'nd-btn' ); ?>
+			<?php nd_link( 'nd_about_linkedin', 'nd-btn', nd_copy( 'nd_linkedin' ) ); ?>
 		</div>
 	</section>
 </main>

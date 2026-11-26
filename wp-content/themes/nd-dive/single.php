@@ -1,7 +1,7 @@
 <?php
 /**
- * Post template 1 — Article (default for posts). Design: docs/design/PostArticle.dc.html
- * Other layouts: pick "Case study" or "Release note" under Post → Template.
+ * Post layout 1 — article, for Notes and any post without a layout category. Design: docs/design/PostArticle.dc.html
+ * Project update and Release posts use the layouts in templates/ (see nd_post_layouts()).
  */
 get_header();
 nd_decor( 'fish', 'top: 760px; right: 7%;' );
@@ -14,7 +14,7 @@ the_post();
 		<h1 class="nd-h1" style="font-size: clamp(34px, 6.5vw, 48px); line-height: 1.1"><?php the_title(); ?></h1>
 		<div class="nd-byline">
 			<span class="nd-badge" aria-hidden="true" style="width: 36px; height: 36px">nd</span>
-			<strong>Nathan Dulkis</strong><span>·</span><span><?php echo esc_html( get_the_date() ); ?></span><span>·</span><span><?php echo esc_html( nd_reading_time() ); ?></span>
+			<strong><?php the_author(); ?></strong><span>·</span><span><?php echo esc_html( get_the_date() ); ?></span><span>·</span><span><?php echo esc_html( nd_reading_time() ); ?></span>
 		</div>
 		<div class="nd-prose"><?php the_content(); ?></div>
 		<?php the_tags( '<div class="nd-tags">', '', '</div>' ); ?>
