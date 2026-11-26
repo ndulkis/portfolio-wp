@@ -1,4 +1,5 @@
 <?php
+defined( 'WP_CLI' ) || exit; // CLI only: this repo is the web root on the live site.
 /**
  * Seed local content. Run with: lando seed  (wp eval-file scripts/seed.php)
  * Idempotent — matches existing content by slug and updates it.

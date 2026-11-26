@@ -1,4 +1,5 @@
 <?php
+defined( 'WP_CLI' ) || exit; // CLI only: this repo is the web root on the live site.
 /** Self-check for theme field sanitizing + layout-aware meta box. Run: lando wp eval-file scripts/check-fields.php */
 $id = wp_insert_post( array( 'post_type' => 'project', 'post_title' => 'nd check', 'post_status' => 'draft' ) );
 update_post_meta( $id, 'nd_learned', "line one\nline <b>two</b>" );

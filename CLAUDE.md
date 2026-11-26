@@ -70,9 +70,17 @@ The repo tracks only our code and the plugins (`.gitignore` is a whitelist): `wp
 - **Installed:** Two Factor 0.17.0 (2FA: set it up per user in Users → Profile, and save the backup codes) and Limit Login Attempts Reloaded 3.4.7 (locks an IP out for 20 min after 4 failed logins; its paid "cloud" features are optional and unused). Check files against wordpress.org with `lando wp plugin verify-checksums --all`.
 - **Cloudflare Turnstile** (`wp-content/mu-plugins/nd-turnstile.php`, must-use, tracked): a human check on the login and lost-password forms, verified with Cloudflare before login. On only when `ND_TURNSTILE_SITE_KEY` and `ND_TURNSTILE_SECRET` are in `wp-config.php`: setup puts Cloudflare's always-pass **test** keys there locally (the widget says "For testing only"); the live site gets real keys from Cloudflare → Turnstile (never commit them). Fails closed; a failed check counts as a failed login for the rate limiter. Locked out on the live site? Remove the two constants.
 - **Locked out locally?** Everything reaches Lando through one proxy IP, so a few bad logins lock out the whole local site. Clear it: `lando wp option update limit_login_lockouts '[]' --format=json` (same for `limit_login_retries`). On the live site behind Cloudflare/a proxy, set the plugin's "Trusted IP origins" to the forwarded header, or it will see every visitor as the proxy.
-- **Updating (plugins and core): always through a branch.** `git switch -c update/<what>` → `lando wp plugin update --all` (see what's waiting with `lando wp plugin list --update=available`, or the local dashboard) → click through the site → commit → push → deploy. Never update on the live site: the next deploy would put the old version back.
+- **Updating (plugins and core): always through a branch.** `git switch -c update/<what>` → `lando wp plugin update --all` (see what's waiting with `lando wp plugin list --update=available`, or the local dashboard); for core, set `WP_VERSION` in `scripts/deploy.sh` and run `lando wp core update --version=<it>` → click through the site → commit → push → deploy. Never update on the live site: the next deploy would put the old version back.
 - **Live site must block dashboard updates and file edits** (part of the deploy, in its `wp-config.php`): `define( 'DISALLOW_FILE_MODS', true );` (also hides update notices there, so check updates locally) and leave plugin auto-updates off.
 - **Theme hardening** (functions.php, "Hardening"): no author archives (`?author=` → home), REST `/wp/v2/users` hidden from visitors, no users sitemap, no author in oEmbed, one login error for wrong username or password, XML-RPC refused (403), no WordPress version in the page. Login rate limiting / 2FA come from plugins; a firewall (host or Cloudflare) belongs to the deploy.
+
+## Deploy (SpinupWP)
+
+- Hosted on a VPS managed by SpinupWP. The site is created with "Clone a Git Repository" (SSH URL, read-only deploy key, branch `production`, Push to Deploy webhook on GitHub). The repo checks out into the web root (`files/`); untracked/ignored files there (core, `wp-config.php`, uploads) are left alone.
+- Deployment script (Git tab): `sh scripts/deploy.sh` — pins WordPress core (`WP_VERSION`; change it on an update branch), updates the DB, activates plugins, flushes rewrites and caches. It never seeds; `setup.sh`/`seed.php` are local only (the PHP scripts exit unless run by WP-CLI).
+- Live `wp-config.php` (on the server, never in git): `DISALLOW_FILE_MODS`, `WP_ENVIRONMENT_TYPE` `production`, real `ND_TURNSTILE_SITE_KEY`/`ND_TURNSTILE_SECRET`.
+- Nginx on the server denies `/docs/`, `/scripts/`, `*.md`, `.lando.yml` (they sit in the web root).
+- First launch: content goes up once from local (`lando wp db export`, import, `wp search-replace` the domain, copy `wp-content/uploads`); after that, live is the source of content and local is for code.
 
 ## Still open (placeholders shown as `[brackets]`)
 
@@ -81,7 +89,7 @@ The repo tracks only our code and the plugins (`.gitignore` is a whitelist): `wp
 - Posts: the seeded posts are local placeholders and get **deleted before launch**; real posts are published over time. With no posts, Home's Dive log and the Posts page show an editable empty line (Page copy: "…when there are no posts yet").
 - Settings: admin email (ndulkis@gmail.com) and timezone (America/Los_Angeles) are set by setup.
 - LinkedIn URL and email (Customizer).
-- Not built yet: Résumé page (old site had `/resume`; `assets/resume.pdf` is linked from About), hosting/deploy choice (WordPress chosen partly because it's cheaper to host than Drupal).
+- Not built yet: Résumé page (old site had `/resume`; `assets/resume.pdf` is linked from About).
 
 ## Conventions
 

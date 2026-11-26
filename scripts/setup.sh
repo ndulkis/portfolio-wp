@@ -3,7 +3,7 @@
 set -e
 cd /app
 
-[ -f wp-load.php ] || wp core download --skip-content
+[ -f wp-load.php ] || wp core download --skip-content --version="$(sed -n 's/^WP_VERSION=//p' scripts/deploy.sh)"   # Same core as live.
 [ -f wp-config.php ] || wp config create \
   --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=database --skip-check
 
