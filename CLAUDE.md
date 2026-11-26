@@ -79,7 +79,8 @@ The repo tracks only our code and the plugins (`.gitignore` is a whitelist): `wp
 - Hosted on a VPS managed by SpinupWP. The site is created with "Clone a Git Repository" (SSH URL, read-only deploy key, branch `production`, Push to Deploy webhook on GitHub). The repo checks out into the web root (`files/`); untracked/ignored files there (core, `wp-config.php`, uploads) are left alone.
 - Deployment script (Git tab): `sh scripts/deploy.sh` — pins WordPress core (`WP_VERSION`; change it on an update branch), updates the DB, activates plugins, flushes rewrites and caches. It never seeds; `setup.sh`/`seed.php` are local only (the PHP scripts exit unless run by WP-CLI).
 - Live `wp-config.php` (on the server, never in git): `DISALLOW_FILE_MODS`, `WP_ENVIRONMENT_TYPE` `production`, real `ND_TURNSTILE_SITE_KEY`/`ND_TURNSTILE_SECRET`.
-- Nginx on the server denies `/docs/`, `/scripts/`, `*.md`, `.lando.yml` (they sit in the web root).
+- Nginx on the server denies `/docs/`, `/scripts/`, `*.md`, `.lando.yml` (they sit in the web root): `/etc/nginx/sites-available/<domain>/server/nd-deny.conf` with `location ^~ /docs/`, `location ^~ /scripts/` (`^~` so PHP never runs them), `location ~ \.md$`, `location = /.lando.yml`, each `{ deny all; }`; then `sudo nginx -t && sudo service nginx reload`. Add it on every site.
+- Server: SpinupWP on DigitalOcean (SFO3, 2 GB), hostname `sfo1.nathandulkis.com`. Staging = `staging.nathandulkis.dev` (branch `develop`, site user `staging`, database `nd_staging`, `wp-config.php` one level above `files/`, `blog_public` 0, no page cache). Production = `nathandulkis.dev` (branch `production`). DNS on Cloudflare (SSL Full (strict)).
 - First launch: content goes up once from local (`lando wp db export`, import, `wp search-replace` the domain, copy `wp-content/uploads`); after that, live is the source of content and local is for code.
 
 ## Still open (placeholders shown as `[brackets]`)
