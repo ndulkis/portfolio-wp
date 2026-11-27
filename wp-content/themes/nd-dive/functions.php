@@ -834,11 +834,12 @@ function nd_default_nav() {
 
 /** Inline-safe <img> for a diver pose from assets/divers. */
 function nd_diver( $pose, $alt, $anim = 'nd-anim-bob' ) {
+	$file = "assets/divers/diver-{$pose}.svg";
 	$dims = array( 'home' => array( 420, 420 ), '404' => array( 380, 420 ) );
 	list( $w, $h ) = $dims[ $pose ] ?? array( 380, 400 );
 	printf(
 		'<figure class="nd-hero__art %3$s"><img src="%1$s" alt="%2$s" width="%4$d" height="%5$d" decoding="async"></figure>',
-		esc_url( get_theme_file_uri( "assets/divers/diver-{$pose}.svg" ) ),
+		esc_url( get_theme_file_uri( $file ) . '?ver=' . nd_asset_ver( $file ) ),
 		esc_attr( $alt ),
 		esc_attr( $anim ),
 		$w,
