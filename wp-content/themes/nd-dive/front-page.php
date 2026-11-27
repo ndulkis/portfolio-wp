@@ -4,7 +4,7 @@
  */
 get_header();
 nd_decor( 'sub', 'top: 80px; left: 50%;' );
-nd_decor( 'fish', 'top: 650px; left: 46%;' );
+nd_decor( 'fish', 'top: 560px; right: 3%;' );
 nd_decor( 'jelly', 'top: 1160px; left: 1.5%;' );
 nd_decor( 'school', 'top: 1880px; right: 2.5%;' );
 
@@ -29,11 +29,15 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 			<?php nd_link( 'nd_home_all' ); ?>
 		</div>
 		<div class="nd-grid-3">
-			<?php foreach ( $nd_projects as $p ) : $d = nd_project( $p->ID ); ?>
-				<article class="nd-card nd-pcard">
+			<?php
+			$nd_projects_url = get_post_type_archive_link( 'project' );
+			foreach ( $nd_projects as $p ) :
+				$d = nd_project( $p->ID );
+				?>
+				<article class="nd-card nd-pcard nd-pcard--link">
 					<?php nd_slot( $p->ID, $d['title'] . ' screenshot' ); ?>
 					<div class="nd-pcard__body">
-						<h3><?php echo esc_html( $d['title'] ); ?></h3>
+						<h3><a class="nd-pcard__link" href="<?php echo esc_url( $nd_projects_url . '#' . $p->post_name ); ?>"><?php echo esc_html( $d['title'] ); ?></a></h3>
 						<p class="nd-muted"><?php echo esc_html( $d['blurb'] ); ?></p>
 						<p class="nd-mono"><?php echo esc_html( $d['tags'] ); ?></p>
 					</div>
@@ -44,9 +48,9 @@ $nd_posts    = get_posts( array( 'numberposts' => 3 ) );
 
 	<section class="nd-split">
 		<div>
-			<h2 class="nd-h2">The short version</h2>
-			<p class="nd-muted"><?php echo esc_html( nd_copy( 'nd_home_short' ) ); ?></p>
-			<p><?php nd_link( 'nd_home_more' ); ?></p>
+			<h2 class="nd-h2" style="margin-bottom: 12px">The short version</h2>
+			<p class="nd-muted" style="margin: 0"><?php echo esc_html( nd_copy( 'nd_home_short' ) ); ?></p>
+			<p style="margin: 16px 0 0"><?php nd_link( 'nd_home_more' ); ?></p>
 		</div>
 		<div>
 			<h2 class="nd-h2" style="margin-bottom: 20px">Dive log</h2>

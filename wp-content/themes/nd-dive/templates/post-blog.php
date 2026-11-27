@@ -15,39 +15,43 @@ $nd_email = nd_copy( 'nd_email' );
 $nd_more  = get_posts( array( 'category_name' => 'blog', 'posts_per_page' => 3, 'post__not_in' => array( get_the_ID() ) ) );
 ?>
 <main id="main">
-	<header class="nd-blog-head">
-		<p class="nd-back"><a href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ); ?>">← All posts</a></p>
-		<div style="max-width: 720px">
-			<p class="nd-eyebrow" style="color: var(--nd-accent); margin-bottom: 12px"><?php echo esc_html( strtolower( nd_post_kind() ) ); ?></p>
-			<h1 class="nd-h1" style="line-height: 1.08"><?php the_title(); ?></h1>
-			<?php if ( has_excerpt() ) : ?><p class="nd-lede" style="max-width: none; font-size: 21px; line-height: 1.6; margin-top: 20px"><?php echo esc_html( get_the_excerpt() ); ?></p><?php endif; ?>
-		</div>
-		<div class="nd-byline" style="margin: 28px 0 32px; padding: 0; border: 0">
-			<span class="nd-badge" aria-hidden="true" style="width: 36px; height: 36px">nd</span>
-			<strong><?php the_author(); ?></strong><span>·</span><span><?php echo esc_html( get_the_date() ); ?></span><span>·</span><span><?php echo esc_html( nd_reading_time() ); ?></span>
-		</div>
-		<?php if ( has_post_thumbnail() ) : ?><?php nd_slot( get_the_ID(), 'Cover image', 'nd-cover' ); ?><?php endif; ?>
-		<?php if ( $nd_facts ) : ?>
-			<dl class="nd-card nd-blog-facts">
-				<?php foreach ( $nd_facts as $nd_fact ) : ?>
-					<div><dt><?php echo esc_html( $nd_fact['label'] ); ?></dt><dd><?php echo esc_html( $nd_fact['value'] ); ?></dd></div>
-				<?php endforeach; ?>
-			</dl>
-		<?php endif; ?>
-	</header>
-
-	<article class="nd-narrow" style="padding-top: 56px; padding-bottom: 48px">
-		<div class="nd-prose nd-prose--blog"><?php the_content(); ?></div>
-		<div class="nd-signoff">
-			<div>
-				<strong><?php echo esc_html( $nd_meta( 'nd_reply_title' ) ?: 'Thanks for reading.' ); ?></strong>
-				<span><?php echo esc_html( $nd_meta( 'nd_reply_text' ) ?: 'Got a thought on this one? I’d like to hear it.' ); ?></span>
+	<article>
+		<div class="nd-blog-head">
+			<p class="nd-back"><a href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/' ) ); ?>">← All posts</a></p>
+			<div style="max-width: 720px">
+				<p class="nd-eyebrow" style="color: var(--nd-accent); margin-bottom: 12px"><?php echo esc_html( strtolower( nd_post_kind() ) ); ?></p>
+				<h1 class="nd-h1" style="line-height: 1.08"><?php the_title(); ?></h1>
+				<?php if ( has_excerpt() ) : ?><p class="nd-lede" style="max-width: none; font-size: 21px; line-height: 1.6; margin-top: 20px"><?php echo esc_html( get_the_excerpt() ); ?></p><?php endif; ?>
 			</div>
-			<?php if ( $nd_email ) : ?>
-				<a class="nd-btn nd-btn--primary" href="<?php echo esc_url( 'mailto:' . antispambot( $nd_email ) . '?subject=' . rawurlencode( 'Re: ' . get_the_title() ) ); ?>"><?php echo esc_html( $nd_meta( 'nd_reply_label' ) ?: 'Reply by email' ); ?></a>
+			<div class="nd-byline" style="margin: 28px 0 32px; padding: 0; border: 0">
+				<span class="nd-badge" aria-hidden="true" style="width: 36px; height: 36px">nd</span>
+				<div class="nd-byline__meta">
+					<strong><?php the_author(); ?></strong><span class="nd-byline__sub"><span><?php echo esc_html( get_the_date() ); ?></span><span><?php echo esc_html( nd_reading_time() ); ?></span></span>
+				</div>
+			</div>
+			<?php if ( has_post_thumbnail() ) : ?><?php nd_slot( get_the_ID(), get_the_title() . ' cover image', 'nd-cover' ); ?><?php endif; ?>
+			<?php if ( $nd_facts ) : ?>
+				<dl class="nd-card nd-blog-facts">
+					<?php foreach ( $nd_facts as $nd_fact ) : ?>
+						<div><dt><?php echo esc_html( $nd_fact['label'] ); ?></dt><dd><?php echo esc_html( $nd_fact['value'] ); ?></dd></div>
+					<?php endforeach; ?>
+				</dl>
 			<?php endif; ?>
 		</div>
-		<?php the_tags( '<div class="nd-tags" style="margin-top: 28px">', '', '</div>' ); ?>
+
+		<div class="nd-narrow" style="padding-top: 56px; padding-bottom: 48px">
+			<div class="nd-prose nd-prose--blog"><?php the_content(); ?></div>
+			<div class="nd-signoff">
+				<div>
+					<strong><?php echo esc_html( $nd_meta( 'nd_reply_title' ) ?: 'Thanks for reading.' ); ?></strong>
+					<span><?php echo esc_html( $nd_meta( 'nd_reply_text' ) ?: 'Got a thought on this one? I’d like to hear it.' ); ?></span>
+				</div>
+				<?php if ( $nd_email ) : ?>
+					<a class="nd-btn nd-btn--primary" href="<?php echo esc_url( 'mailto:' . antispambot( $nd_email ) . '?subject=' . rawurlencode( 'Re: ' . get_the_title() ) ); ?>"><?php echo esc_html( $nd_meta( 'nd_reply_label' ) ?: 'Reply by email' ); ?></a>
+				<?php endif; ?>
+			</div>
+			<?php the_tags( '<div class="nd-tags" style="margin-top: 28px">', '', '</div>' ); ?>
+		</div>
 	</article>
 
 	<div class="nd-wrap">

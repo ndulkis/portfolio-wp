@@ -14,7 +14,7 @@ $nd_sections = nd_rows( 'nd_sections' );
 ?>
 <main id="main" class="nd-wrap">
 	<section style="padding: clamp(40px, 5vw, 64px) 0 40px">
-		<p class="nd-back"><a href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ); ?>">← All posts</a></p>
+		<p class="nd-back"><a href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/' ) ); ?>">← All posts</a></p>
 		<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px">
 			<span class="nd-pill" style="font-size: 13px"><?php echo esc_html( nd_post_kind() ); ?></span>
 			<span style="font-size: 14px; color: var(--nd-faint)"><?php echo esc_html( get_the_date() . ' · ' . nd_reading_time() ); ?></span>
@@ -23,7 +23,7 @@ $nd_sections = nd_rows( 'nd_sections' );
 		<?php if ( has_excerpt() ) : ?><p class="nd-lede" style="max-width: 640px; font-size: 20px; margin-top: 20px"><?php echo esc_html( get_the_excerpt() ); ?></p><?php endif; ?>
 	</section>
 
-	<?php nd_slot( get_the_ID(), 'Hero screenshot of the finished project', 'nd-cover' ); ?>
+	<?php if ( has_post_thumbnail() ) : ?><?php nd_slot( get_the_ID(), get_the_title() . ' hero screenshot', 'nd-cover' ); ?><?php endif; ?>
 
 	<div class="nd-case">
 		<aside class="nd-card nd-facts" aria-label="Project facts">

@@ -135,4 +135,12 @@ if ( function_exists( 'nd_turnstile_passed' ) ) {
 	assert( false === nd_turnstile_passed() );
 	$_POST = array();
 }
+
+// Single projects are kept out of the XML sitemap (they redirect to /projects/#slug); nd_slot fills empty alt text from the label.
+assert( ! array_key_exists( 'project', apply_filters( 'wp_sitemaps_post_types', array( 'post' => true, 'page' => true, 'project' => true ) ) ) );
+ob_start();
+nd_slot( $proj->ID, 'Fallback screenshot label' );
+$slot_html = ob_get_clean();
+assert( ! str_contains( $slot_html, 'alt=""' ) );
+
 WP_CLI::success( 'Field checks passed.' );

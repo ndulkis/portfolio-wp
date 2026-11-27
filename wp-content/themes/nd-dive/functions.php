@@ -389,6 +389,18 @@ add_action( 'pre_get_posts', function ( $q ) {
 	}
 } );
 
+/* Single project URLs redirect to that project's card on /projects/, and stay out of the XML sitemap. */
+add_action( 'template_redirect', function () {
+	if ( is_singular( 'project' ) ) {
+		wp_safe_redirect( get_post_type_archive_link( 'project' ) . '#' . get_queried_object()->post_name, 301 );
+		exit;
+	}
+} );
+add_filter( 'wp_sitemaps_post_types', function ( $post_types ) {
+	unset( $post_types['project'] );
+	return $post_types;
+} );
+
 /*
  * Saving a project renumbers all projects 1, 2, 3… with this one at its Order: the others at or below it
  * move down one, so no two share a number. Order 0 (left empty) or past the end puts it last.
@@ -510,8 +522,12 @@ function nd_copy_fields() {
  * archive) and 404 (slug `not-found`, private) are pages only so their copy is edited like the rest.
  */
 function nd_copy_page_id( $section ) {
+	static $cache = array();
+	if ( array_key_exists( $section, $cache ) ) {
+		return $cache[ $section ];
+	}
 	$slug = array( 'nd_about' => 'about', 'nd_projects' => 'projects', 'nd_404' => 'not-found' );
-	return match ( $section ) {
+	return $cache[ $section ] = match ( $section ) {
 		'nd_home'  => (int) get_option( 'page_on_front' ),
 		'nd_posts' => (int) get_option( 'page_for_posts' ),
 		default    => isset( $slug[ $section ] ) ? (int) get_page_by_path( $slug[ $section ] )?->ID : 0,
@@ -616,6 +632,21 @@ function nd_meta_description() {
 	return trim( wp_strip_all_tags( $text ?? '' ) ) ?: get_bloginfo( 'description' );
 }
 
+/** Canonical URL for the current request (core only prints it on singular views). */
+function nd_canonical_url() {
+	if ( is_singular() ) {
+		return get_permalink( get_queried_object_id() );
+	}
+	if ( is_front_page() ) {
+		return home_url( '/' );
+	}
+	$paged = get_query_var( 'paged' );
+	if ( $paged > 1 ) {
+		return get_pagenum_link( $paged );
+	}
+	return home_url( user_trailingslashit( $GLOBALS['wp']->request ) );
+}
+
 add_action( 'wp_head', function () {
 	if ( is_404() ) {
 		return;
@@ -623,13 +654,17 @@ add_action( 'wp_head', function () {
 	$id    = is_singular() ? get_queried_object_id() : 0;
 	$image = $id && has_post_thumbnail( $id ) ? wp_get_attachment_image_src( get_post_thumbnail_id( $id ), 'large' ) : false;
 	$desc  = nd_meta_description();
-	$tags  = array(
+	$url   = nd_canonical_url();
+	if ( ! is_singular() && ! is_search() ) {
+		printf( "<link rel=\"canonical\" href=\"%s\">\n", esc_url( $url ) );
+	}
+	$tags = array(
 		'description'     => $desc,
 		'og:type'         => is_singular( 'post' ) ? 'article' : 'website',
 		'og:site_name'    => get_bloginfo( 'name' ),
 		'og:title'        => wp_get_document_title(),
 		'og:description'  => $desc,
-		'og:url'          => $id ? get_permalink( $id ) : home_url( user_trailingslashit( $GLOBALS['wp']->request ) ), // Path only, no query string.
+		'og:url'          => $url,
 		// Cover image if the post has one, else the default card (assets/og-default.png, 1200×630).
 		'og:image'        => $image ? $image[0] : get_theme_file_uri( 'assets/og-default.png' ),
 		'og:image:width'  => $image ? $image[1] : 1200,
@@ -639,6 +674,33 @@ add_action( 'wp_head', function () {
 	foreach ( $tags as $key => $value ) {
 		$attr = str_starts_with( $key, 'og:' ) ? 'property' : 'name';
 		printf( "<meta %s=\"%s\" content=\"%s\">\n", $attr, esc_attr( $key ), esc_attr( $value ) );
+	}
+	// Lightweight structured data from existing copy.
+	$person = array(
+		'@type' => 'Person',
+		'name'  => get_bloginfo( 'name' ),
+		'url'   => home_url( '/' ),
+		'sameAs' => array_values( array_filter( array( nd_copy( 'nd_github' ), nd_copy( 'nd_linkedin' ) ) ) ),
+	);
+	$schema = null;
+	if ( is_front_page() ) {
+		$schema = array( '@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => get_bloginfo( 'name' ), 'url' => home_url( '/' ), 'description' => $desc, 'author' => $person );
+	} elseif ( is_singular( 'post' ) ) {
+		$post   = get_queried_object();
+		$schema = array(
+			'@context'      => 'https://schema.org',
+			'@type'         => 'BlogPosting',
+			'headline'      => get_the_title( $post ),
+			'description'   => $desc,
+			'datePublished' => get_the_date( DATE_W3C, $post ),
+			'dateModified'  => get_the_modified_date( DATE_W3C, $post ),
+			'url'           => $url,
+			'image'         => $tags['og:image'],
+			'author'        => array( '@type' => 'Person', 'name' => get_the_author_meta( 'display_name', $post->post_author ) ),
+		);
+	}
+	if ( $schema ) {
+		printf( "<script type=\"application/ld+json\">%s</script>\n", wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 }, 5 );
 
@@ -772,11 +834,15 @@ function nd_default_nav() {
 
 /** Inline-safe <img> for a diver pose from assets/divers. */
 function nd_diver( $pose, $alt, $anim = 'nd-anim-bob' ) {
+	$dims = array( 'home' => array( 420, 420 ), '404' => array( 380, 420 ) );
+	list( $w, $h ) = $dims[ $pose ] ?? array( 380, 400 );
 	printf(
-		'<figure class="nd-hero__art %3$s"><img src="%1$s" alt="%2$s" width="420" height="420"></figure>',
+		'<figure class="nd-hero__art %3$s"><img src="%1$s" alt="%2$s" width="%4$d" height="%5$d" decoding="async"></figure>',
 		esc_url( get_theme_file_uri( "assets/divers/diver-{$pose}.svg" ) ),
 		esc_attr( $alt ),
-		esc_attr( $anim )
+		esc_attr( $anim ),
+		$w,
+		$h
 	);
 }
 
@@ -822,11 +888,13 @@ function nd_project( $id = 0 ) {
 	return $data;
 }
 
-/** Image slot: featured image if set, otherwise a labelled placeholder. */
+/** Image slot: featured image if set (with fallback alt text when media alt is empty), otherwise a labelled placeholder. */
 function nd_slot( $id, $label, $class = '' ) {
 	echo '<div class="nd-slot ' . esc_attr( $class ) . '">';
 	if ( has_post_thumbnail( $id ) ) {
-		echo get_the_post_thumbnail( $id, 'large' );
+		$thumb_id = get_post_thumbnail_id( $id );
+		$alt      = trim( (string) get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) );
+		echo get_the_post_thumbnail( $id, 'large', '' !== $alt ? array() : array( 'alt' => $label ) );
 	} else {
 		echo esc_html( '[' . $label . ']' );
 	}

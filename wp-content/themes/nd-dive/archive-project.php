@@ -29,34 +29,38 @@ $nd_total   = wp_count_posts( 'project' )->publish;
 		<?php endforeach; ?>
 	</nav>
 
-	<div class="nd-grid-2">
-		<?php while ( have_posts() ) : the_post(); $d = nd_project(); ?>
-			<article class="nd-card nd-story-card">
-				<?php nd_slot( get_the_ID(), $d['title'] . ' screenshot' ); ?>
-				<div class="nd-story-card__body">
-					<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
-						<?php if ( 'in-progress' === $d['status'] ) : ?>
-							<span class="nd-pill nd-pill--progress">In progress</span>
-						<?php else : ?>
-							<span class="nd-pill">Live</span>
-						<?php endif; ?>
-						<span class="nd-mono"><?php echo esc_html( $d['category'] ); ?></span>
+	<?php if ( have_posts() ) : ?>
+		<div class="nd-grid-2">
+			<?php while ( have_posts() ) : the_post(); $d = nd_project(); ?>
+				<article id="<?php echo esc_attr( get_post_field( 'post_name' ) ); ?>" class="nd-card nd-story-card">
+					<?php nd_slot( get_the_ID(), $d['title'] . ' screenshot' ); ?>
+					<div class="nd-story-card__body">
+						<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+							<?php if ( 'in-progress' === $d['status'] ) : ?>
+								<span class="nd-pill nd-pill--progress">In progress</span>
+							<?php else : ?>
+								<span class="nd-pill">Live</span>
+							<?php endif; ?>
+							<span class="nd-mono"><?php echo esc_html( $d['category'] ); ?></span>
+						</div>
+						<div>
+							<h2><?php echo esc_html( $d['title'] ); ?></h2>
+							<?php if ( $d['collab'] ) : ?><p class="nd-mono" style="font: 14px var(--nd-sans); margin: 4px 0 0"><?php echo esc_html( $d['collab'] ); ?></p><?php endif; ?>
+						</div>
+						<dl class="nd-dl">
+							<dt>Problem</dt><dd><?php echo nl2br( esc_html( $d['problem'] ) ); ?></dd>
+							<dt>Built</dt><dd><?php echo nl2br( esc_html( $d['built'] ) ); ?></dd>
+							<dt>Learned</dt><dd class="nd-muted"><?php echo nl2br( esc_html( $d['learned'] ) ); ?></dd>
+						</dl>
+						<p class="nd-mono" style="margin: auto 0 0; padding-top: 6px"><?php echo esc_html( $d['tags'] ); ?></p>
+						<?php if ( $d['link_url'] ) : ?><a href="<?php echo esc_url( $d['link_url'] ); ?>" style="font-weight: 500"><?php echo esc_html( ( $d['link_label'] ?: 'Visit' ) . ' ↗' ); ?></a><?php endif; ?>
 					</div>
-					<div>
-						<h2><?php echo esc_html( $d['title'] ); ?></h2>
-						<?php if ( $d['collab'] ) : ?><p class="nd-mono" style="font: 14px var(--nd-sans); margin: 4px 0 0"><?php echo esc_html( $d['collab'] ); ?></p><?php endif; ?>
-					</div>
-					<dl class="nd-dl">
-						<dt>Problem</dt><dd><?php echo nl2br( esc_html( $d['problem'] ) ); ?></dd>
-						<dt>Built</dt><dd><?php echo nl2br( esc_html( $d['built'] ) ); ?></dd>
-						<dt>Learned</dt><dd class="nd-muted"><?php echo nl2br( esc_html( $d['learned'] ) ); ?></dd>
-					</dl>
-					<p class="nd-mono" style="margin: auto 0 0; padding-top: 6px"><?php echo esc_html( $d['tags'] ); ?></p>
-					<?php if ( $d['link_url'] ) : ?><a href="<?php echo esc_url( $d['link_url'] ); ?>" style="font-weight: 500"><?php echo esc_html( ( $d['link_label'] ?: 'Visit' ) . ' ↗' ); ?></a><?php endif; ?>
-				</div>
-			</article>
-		<?php endwhile; ?>
-	</div>
+				</article>
+			<?php endwhile; ?>
+		</div>
+	<?php else : ?>
+		<p class="nd-muted" style="padding: 8px 0 72px">No projects here yet.</p>
+	<?php endif; ?>
 
 	<section class="nd-cta">
 		<div>
