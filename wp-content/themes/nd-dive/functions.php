@@ -31,6 +31,7 @@ add_filter( 'use_default_gallery_style', '__return_false' );
 
 add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array(), nd_asset_ver( 'style.css' ) );
+	wp_enqueue_script( 'nd-dive', get_theme_file_uri( 'assets/dive.js' ), array(), nd_asset_ver( 'assets/dive.js' ), array( 'strategy' => 'defer', 'in_footer' => true ) );
 } );
 
 /* ── Projects ─────────────────────────────────────────── */
