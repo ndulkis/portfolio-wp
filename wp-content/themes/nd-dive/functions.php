@@ -473,16 +473,16 @@ function nd_copy_fields() {
 			'nd_about_highlight' => $f( 'Headline — highlighted line', 'Let’s go a little deeper.' ),
 			'nd_about_lede'      => $f( 'Intro', 'I build websites and the systems behind them. Here’s how I got here.', 'textarea' ),
 			'nd_stops'           => $rows( 'Story stops', 'stop', 'Your story as stops down the depth line, top to bottom.', array( 'depth' => 'Depth label', 'heading' => 'Heading', 'text' => $text ), array(
-				array( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
-				array( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
+				array( '0 m · surface', 'Where it started', 'As a kid it was Legos, Pokémon, and video games. Looking back, it was always the same thing: an obsession with how things work, and that’s how I fell into software.' ),
+				array( '30 m · curious', 'Getting hooked', 'AP Computer Science Principles in high school is where it clicked. After that came small scripts to get out of tedious tasks, and slowly a real interest in how whole systems fit together.' ),
 				array( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
 				array( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
 			) ),
 			'nd_glance'          => $rows( 'At a glance', 'item', 'The quick-facts card. Items with no value are hidden.', array( 'label' => 'Label', 'value' => 'Value' ), array(
 				array( 'Now', 'Web developer, Hounder' ),
 				array( 'Stack', 'PHP, Drupal, WordPress, Laravel, React' ),
-				array( 'Based in', '[CITY, STATE]' ),
-				array( 'Off the clock', '[HOBBIES]' ),
+				array( 'Based in', '' ),
+				array( 'Off the clock', '' ),
 			) ),
 			'nd_principles'      => $rows( 'How I work', 'principle', 'Short principles, shown two per row.', array( 'heading' => 'Heading', 'text' => $text ), array(
 				array( 'Config in code', 'Every environment rebuilds the same way, and changes get reviewed before production.' ),
@@ -849,10 +849,10 @@ function nd_diver( $pose, $alt, $anim = 'nd-anim-bob' ) {
 /** Decorative sea life. $kind: sub | fish | jelly | school | angler. $style: inline position. */
 function nd_decor( $kind, $style ) {
 	$svgs = array(
-		'sub'    => array( 'drift', '<svg viewBox="0 0 130 70" width="130" height="70" fill="none"><path d="M58 22V10h14v12" fill="#E3B04B"/><path d="M70 10h10" stroke="#E3B04B" stroke-width="3" stroke-linecap="round"/><rect x="14" y="22" width="96" height="36" rx="18" fill="#E3B04B"/><circle cx="44" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="66" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="88" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><path d="M14 40H4M4 30v20" stroke="#C99430" stroke-width="3" stroke-linecap="round"/><circle cx="120" cy="14" r="3" stroke="#B4D9DD" stroke-width="1.5"/><circle cx="126" cy="4" r="2" stroke="#B4D9DD" stroke-width="1.5"/></svg>' ),
+		'sub'    => array( 'drift', '<svg viewBox="0 0 130 70" width="130" height="70" fill="none"><path d="M58 22V10h14v12" fill="#E3B04B"/><path d="M70 10h10" stroke="#E3B04B" stroke-width="3" stroke-linecap="round"/><rect x="14" y="22" width="96" height="36" rx="18" fill="#E3B04B"/><circle cx="44" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="66" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="88" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><path class="nd-propeller" d="M14 40H4M4 30v20" stroke="#C99430" stroke-width="3" stroke-linecap="round"/></svg>' ),
 		'fish'   => array( 'swim', '<svg viewBox="0 0 34 20" width="34" height="20"><path d="M4 10q8-9 20-6l8-4v20l-8-4Q12 19 4 10z" fill="#F08A4B"/><circle cx="10" cy="9" r="1.6" fill="#04222E"/></svg>' ),
-		'jelly'  => array( 'jelly', '<svg viewBox="0 0 52 70" width="52" height="70" fill="none"><path d="M4 26a22 22 0 0 1 44 0q-6 4-11 0-5 4-11 0-5 4-11 0-5 4-11 0z" fill="#C9A6FF" fill-opacity=".55" stroke="#E2D2FF" stroke-width="1.5"/><path d="M12 30q-4 14 2 26M22 30q4 16-2 34M32 30q-4 14 2 28M42 30q4 12-2 22" stroke="#E2D2FF" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round"/></svg>' ),
-		'school' => array( 'swim', '<svg viewBox="0 0 80 50" width="80" height="50"><path d="M4 12q7-7 16-4l6-4v16l-6-4Q11 19 4 12z" fill="#6FEBD7"/><path d="M30 28q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".8"/><path d="M10 40q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".6"/></svg>' ),
+		'jelly'  => array( 'jelly', '<svg viewBox="0 0 52 70" width="52" height="70" fill="none"><path d="M4 26a22 22 0 0 1 44 0q-6 4-11 0-5 4-11 0-5 4-11 0-5 4-11 0z" fill="#C9A6FF" fill-opacity=".55" stroke="#E2D2FF" stroke-width="1.5"/><path class="nd-jelly-tentacles" d="M12 30q-4 14 2 26M22 30q4 16-2 34M32 30q-4 14 2 28M42 30q4 12-2 22" stroke="#E2D2FF" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round"/></svg>' ),
+		'school' => array( 'swim', '<svg viewBox="0 0 80 50" width="80" height="50"><path class="nd-school-fish nd-school-fish--1" d="M4 12q7-7 16-4l6-4v16l-6-4Q11 19 4 12z" fill="#6FEBD7"/><path class="nd-school-fish nd-school-fish--2" d="M30 28q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".8"/><path class="nd-school-fish nd-school-fish--3" d="M10 40q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".6"/></svg>' ),
 		'angler' => array( 'swim-slow', '<svg viewBox="0 0 120 90" width="120" height="90" fill="none"><circle class="nd-lure" cx="96" cy="14" r="16" fill="#FFF3B0" fill-opacity=".18"/><path d="M62 40q14-30 34-26" stroke="#3A4F58" stroke-width="2.5" stroke-linecap="round"/><circle class="nd-lure" cx="96" cy="14" r="6" fill="#FFF3B0"/><path d="M14 52q14-26 46-22 26 4 38 26-12 22-38 24-32 2-46-28z" fill="#1B2E36" stroke="#2E4650" stroke-width="2"/><path d="M14 52l-12-14v28z" fill="#1B2E36"/><circle cx="78" cy="48" r="5" fill="#E6F6F7"/><circle cx="79" cy="48" r="2.5" fill="#010B11"/><path d="M66 64l4-6 4 6 4-6 4 6 4-6 4 6" stroke="#E6F6F7" stroke-width="1.5" stroke-linejoin="round"/></svg>' ),
 	);
 	if ( isset( $svgs[ $kind ] ) ) {

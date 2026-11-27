@@ -10,7 +10,7 @@
 	<g class="nd-sway nd-sway--b"><path d="M640 148q-8-18 0-36" stroke="#3BA37E" stroke-width="5" stroke-linecap="round" fill="none"/></g>
 	<g class="nd-sway nd-sway--c"><path d="M300 150v-32M300 130l-12-14M300 124l12-16M312 108l6-8M288 116l-6-8" stroke="#E07A6A" stroke-width="5" stroke-linecap="round" fill="none"/></g>
 	<path d="M760 152L762.4 158.8L769.5 158.9L763.8 163.2L765.9 170.1L760 166L754.1 170.1L756.2 163.2L750.5 158.9L757.6 158.8Z" fill="#F08A4B"/>
-	<path d="M520 168q-12-14 0-22q12 8 0 22z" fill="#E8D9C0"/>
+	<path class="nd-clam" d="M520 168q-12-14 0-22q12 8 0 22z" fill="#E8D9C0"/>
 	<circle class="nd-bubble nd-bubble--1" cx="520" cy="140" r="2.5" fill="none" stroke="#B5F7EC" stroke-width="1.3"/>
 	<circle class="nd-bubble nd-bubble--2" cx="526" cy="144" r="1.8" fill="none" stroke="#B5F7EC" stroke-width="1.2"/>
 	<circle class="nd-bubble nd-bubble--3" cx="102" cy="116" r="2.2" fill="none" stroke="#6FEBD7" stroke-width="1.2"/>
