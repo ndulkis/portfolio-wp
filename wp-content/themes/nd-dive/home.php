@@ -7,9 +7,8 @@ get_header();
 nd_decor( 'jelly', 'top: 980px; right: 2.5%;' );
 nd_decor( 'school', 'top: 1700px; left: 2%;' );
 
-$nd_posts_url = get_permalink( get_option( 'page_for_posts' ) );
+$nd_posts_url = get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/' );
 $nd_current   = is_category() ? get_queried_object_id() : 0;
-$nd_first     = true;
 ?>
 <main id="main" class="nd-wrap">
 	<section class="nd-hero" style="padding-bottom: 32px">
@@ -33,8 +32,13 @@ $nd_first     = true;
 	<?php endif; ?>
 
 	<?php if ( have_posts() ) : the_post(); ?>
+		<?php $nd_version = 'release' === nd_post_layout( get_post() ) ? get_post_meta( get_the_ID(), 'nd_version', true ) : ''; ?>
 		<a class="nd-featured" href="<?php the_permalink(); ?>">
-			<?php nd_slot( get_the_ID(), 'Cover image' ); ?>
+			<?php if ( has_post_thumbnail() ) : ?>
+				<?php nd_slot( get_the_ID(), get_the_title() . ' cover image' ); ?>
+			<?php elseif ( $nd_version ) : ?>
+				<div class="nd-featured__badge" aria-hidden="true"><div class="nd-sonar"><span>v<?php echo esc_html( $nd_version ); ?></span></div></div>
+			<?php endif; ?>
 			<div class="nd-featured__body">
 				<p class="nd-mono" style="color: var(--nd-accent)">latest · <?php echo esc_html( nd_post_kind() ); ?></p>
 				<h2><?php the_title(); ?></h2>

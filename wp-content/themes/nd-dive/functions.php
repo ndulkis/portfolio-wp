@@ -31,12 +31,13 @@ add_filter( 'use_default_gallery_style', '__return_false' );
 
 add_action( 'wp_enqueue_scripts', function () {
 	wp_enqueue_style( 'nd-dive', get_stylesheet_uri(), array(), nd_asset_ver( 'style.css' ) );
+	wp_enqueue_script( 'nd-dive', get_theme_file_uri( 'assets/dive.js' ), array(), nd_asset_ver( 'assets/dive.js' ), array( 'strategy' => 'defer', 'in_footer' => true ) );
 } );
 
 /* ── Projects ─────────────────────────────────────────── */
 
 /*
- * Field definitions: key => array( label, type = text|textarea|url|email|select|rows, help, options, default, layouts ).
+ * Field definitions: key => array( label, type = text|textarea|url|link|email|select|rows, help, options, default, layouts ).
  * `rows` fields are lists the editor can add to, remove from and reorder: `columns` defines one row
  * (column => field definition), `item` names one row ("+ Add fact"), `default` holds rows for new posts.
  * `layouts` (post fields only) lists the post layouts (category slugs) the field belongs to.
@@ -147,9 +148,10 @@ function nd_post_outlines() {
 /** Sanitizer for a field definition (also runs on update_post_meta via register_post_meta). */
 function nd_field_sanitizer( $field ) {
 	return match ( $field['type'] ?? 'text' ) {
-		'textarea' => static fn( $v ) => sanitize_textarea_field( $v ),
-		'url'      => static fn( $v ) => esc_url_raw( $v ),
-		'email'    => static fn( $v ) => sanitize_email( $v ),
+		'textarea'    => static fn( $v ) => sanitize_textarea_field( $v ),
+		'url', 'link' => static fn( $v ) => esc_url_raw( $v ),
+		'file'        => static fn( $v ) => ( $id = absint( $v ) ) && 'attachment' === get_post_type( $id ) ? $id : 0,
+		'email'       => static fn( $v ) => sanitize_email( $v ),
 		'select'   => static fn( $v ) => is_string( $v ) && array_key_exists( $v, $field['options'] ) ? $v : array_key_first( $field['options'] ),
 		// Rows: each column sanitized by its own type; rows with no text (selects aside) are dropped.
 		'rows'     => static function ( $rows ) use ( $field ) {
@@ -206,8 +208,12 @@ add_action( 'init', function () {
 	foreach ( array( 'project' => nd_project_fields(), 'post' => nd_post_fields(), 'page' => $page_fields ) as $type => $fields ) {
 		foreach ( $fields as $key => $field ) {
 			if ( empty( $field['core'] ) ) {
-				$rows = 'rows' === ( $field['type'] ?? '' );
-				register_post_meta( $type, $key, array( 'type' => $rows ? 'array' : 'string', 'single' => true, 'show_in_rest' => ! $rows, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
+				$meta_type = match ( $field['type'] ?? '' ) {
+					'rows'  => 'array',
+					'file'  => 'integer',
+					default => 'string',
+				};
+				register_post_meta( $type, $key, array( 'type' => $meta_type, 'single' => true, 'show_in_rest' => 'array' !== $meta_type, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
 			}
 		}
 	}
@@ -272,12 +278,12 @@ function nd_render_fields_box( $post, $box ) {
 		}
 		$off  = isset( $field['layouts'] ) && ! in_array( $layout, $field['layouts'], true );
 		$any  = $any || ( isset( $field['layouts'] ) && ! $off );
-		$rows = 'rows' === ( $field['type'] ?? '' );
+		$plain_label = in_array( $field['type'] ?? '', array( 'rows', 'file' ), true );
 		printf(
 			'<div class="nd-field"%s%s>%s%s%s</div>',
 			isset( $field['layouts'] ) ? ' data-layouts="' . esc_attr( implode( ' ', $field['layouts'] ) ) . '"' : '',
 			$off ? ' hidden' : '',
-			$rows ? '<span class="nd-field__label">' . esc_html( $field['label'] ) . '</span>' : '<label class="nd-field__label" for="' . esc_attr( $key ) . '">' . esc_html( $field['label'] ) . '</label>',
+			$plain_label ? '<span class="nd-field__label">' . esc_html( $field['label'] ) . '</span>' : '<label class="nd-field__label" for="' . esc_attr( $key ) . '">' . esc_html( $field['label'] ) . '</label>',
 			empty( $field['help'] ) ? '' : '<p class="description">' . esc_html( $field['help'] ) . '</p>',
 			nd_field_input( $key, $field, $value, $off, $key ) // Built from escaped parts.
 		); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -330,6 +336,27 @@ function nd_field_input( $name, $field, $value, $disabled, $id = '' ) {
 				$row( '__i__', array() ),
 				esc_html( $field['item'] )
 			);
+		case 'file':
+			$att_id   = absint( $value );
+			$att_url  = $att_id && 'attachment' === get_post_type( $att_id ) ? wp_get_attachment_url( $att_id ) : '';
+			$att_name = $att_url ? wp_basename( $att_url ) : '';
+			return sprintf(
+				'<div class="nd-file"><input type="hidden" %s value="%s">'
+				. '<span class="nd-file__info"%s><a class="nd-file__link" href="%s" target="_blank" rel="noopener noreferrer">%s</a></span>'
+				. '<span class="nd-file__none"%s>No file selected</span>'
+				. '<button type="button" class="button nd-file__pick"%s>%s</button>'
+				. '<button type="button" class="button nd-file__clear"%s%s>Remove</button></div>',
+				$attrs,
+				$att_url ? $att_id : '',
+				$att_url ? '' : ' hidden',
+				esc_url( $att_url ),
+				esc_html( $att_name ),
+				$att_url ? ' hidden' : '',
+				$disabled ? ' disabled' : '',
+				$att_url ? 'Replace file' : 'Choose from Media Library',
+				$disabled ? ' disabled' : '',
+				$att_url ? '' : ' hidden'
+			);
 		default:
 			$type = in_array( $field['type'] ?? '', array( 'url', 'email' ), true ) ? $field['type'] : 'text';
 			return sprintf( '<input type="%s" %s value="%s">', $type, $attrs, esc_attr( $value ) );
@@ -370,6 +397,11 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 	}
 	wp_enqueue_style( 'nd-admin', get_theme_file_uri( 'assets/admin.css' ), array(), nd_asset_ver( 'assets/admin.css' ) );
 	wp_enqueue_script( 'nd-rows', get_theme_file_uri( 'assets/rows.js' ), array(), nd_asset_ver( 'assets/rows.js' ), true );
+	$post = get_post();
+	if ( $post && in_array( 'file', array_column( nd_fields_for( $post ), 'type' ), true ) ) {
+		wp_enqueue_media();
+		wp_enqueue_script( 'nd-file-field', get_theme_file_uri( 'assets/file-field.js' ), array( 'media-editor' ), nd_asset_ver( 'assets/file-field.js' ), true );
+	}
 	if ( 'post' === get_current_screen()->post_type ) {
 		wp_enqueue_script( 'nd-post-fields', get_theme_file_uri( 'assets/post-fields.js' ), array( 'media-upload' ), nd_asset_ver( 'assets/post-fields.js' ), true );
 		// Layout category IDs in precedence order (same rule as nd_post_layout()), and the outlines of body-written layouts.
@@ -387,6 +419,18 @@ add_action( 'pre_get_posts', function ( $q ) {
 		$q->set( 'orderby', array( 'menu_order' => 'ASC', 'date' => 'DESC' ) );
 		$q->set( 'posts_per_page', -1 );
 	}
+} );
+
+/* Single project URLs redirect to that project's card on /projects/, and stay out of the XML sitemap. */
+add_action( 'template_redirect', function () {
+	if ( is_singular( 'project' ) ) {
+		wp_safe_redirect( get_post_type_archive_link( 'project' ) . '#' . get_queried_object()->post_name, 301 );
+		exit;
+	}
+} );
+add_filter( 'wp_sitemaps_post_types', function ( $post_types ) {
+	unset( $post_types['project'] );
+	return $post_types;
 } );
 
 /*
@@ -420,7 +464,7 @@ add_action( 'save_post_project', function ( $post_id, $post ) {
  * ── Fixed copy on each page ──
  * Page copy is post meta on its page, edited in Pages → Edit ("Page copy" box).
  * Site-wide links stay in the Customizer. Templates read both with nd_copy( 'id' ).
- * section => array( title, fields: id => array( label, default, type = text|textarea|url|email|rows ) ).
+ * section => array( title, fields: id => array( label, default, type = text|textarea|url|link|email|rows ) ).
  * `rows` fields are described with the field definitions above nd_project_fields(); read them with nd_copy_rows( 'id' ).
  */
 
@@ -432,7 +476,7 @@ function nd_copy_fields() {
 	$f = static fn( $label, $default, $type = 'text', $help = '' ) => array( 'label' => $label, 'default' => $default, 'type' => $type, 'help' => $help );
 	// A button or link: "{$id}_label" + "{$id}_url" (printed with nd_link()). Empty label hides it.
 	$btn = static fn( $id, $name, $label, $url = null ) => array( "{$id}_label" => $f( "{$name} — label", $label, 'text', null === $url ? 'Links to the address in Customizer → Links & details (hidden until set).' : 'Leave empty to hide.' ) )
-		+ ( null === $url ? array() : array( "{$id}_url" => $f( "{$name} — link", $url, 'url', 'A path like /about/ or a full https:// address.' ) ) );
+		+ ( null === $url ? array() : array( "{$id}_url" => $f( "{$name} — link", $url, 'link', 'A path like /about/ or a full https:// address.' ) ) );
 	// A rows field from (column => label) and default rows given as lists in column order.
 	$rows = static function ( $label, $item, $help, $columns, $defaults ) {
 		$cols = array_map( fn( $c ) => is_array( $c ) ? $c : array( 'label' => $c ), $columns );
@@ -440,7 +484,7 @@ function nd_copy_fields() {
 	};
 	$text = array( 'label' => 'Text', 'type' => 'textarea' );
 	// A row of buttons (printed with nd_buttons()); the first is the filled one.
-	$buttons = static fn( $defaults ) => $rows( 'Buttons', 'button', 'The first is the main (filled) button. A path like /about/ or a full https:// address.', array( 'label' => 'Label', 'url' => array( 'label' => 'Link', 'type' => 'url' ) ), $defaults );
+	$buttons = static fn( $defaults ) => $rows( 'Buttons', 'button', 'The first is the main (filled) button. A path like /about/ or a full https:// address.', array( 'label' => 'Label', 'url' => array( 'label' => 'Link', 'type' => 'link' ) ), $defaults );
 	$fields = array(
 		'nd_links'    => array( 'Links & details', array(
 			'nd_github'   => $f( 'GitHub URL', 'https://github.com/ndulkis', 'url' ),
@@ -461,16 +505,16 @@ function nd_copy_fields() {
 			'nd_about_highlight' => $f( 'Headline — highlighted line', 'Let’s go a little deeper.' ),
 			'nd_about_lede'      => $f( 'Intro', 'I build websites and the systems behind them. Here’s how I got here.', 'textarea' ),
 			'nd_stops'           => $rows( 'Story stops', 'stop', 'Your story as stops down the depth line, top to bottom.', array( 'depth' => 'Depth label', 'heading' => 'Heading', 'text' => $text ), array(
-				array( '0 m · surface', 'Where it started', '[Where you grew up and what you were into as a kid — one or two sentences.] I fell into software through an obsession with how things work.' ),
-				array( '30 m · curious', 'Getting hooked', 'It started with small scripts to get out of tedious tasks. Slowly that grew into a real interest in how whole systems fit together. [The moment or project that got you hooked.]' ),
+				array( '0 m · surface', 'Where it started', 'As a kid it was Legos, Pokémon, and video games. Looking back, it was always the same thing: an obsession with how things work, and that’s how I fell into software.' ),
+				array( '30 m · curious', 'Getting hooked', 'AP Computer Science Principles in high school is where it clicked. After that came small scripts to get out of tedious tasks, and slowly a real interest in how whole systems fit together.' ),
 				array( '200 m · building', 'Building with friends', 'Side projects taught me to ship with other people: a blackjack trainer with Joon Rho, backed by 682 tests, and a Pokémon guessing game with Eric Morales.' ),
 				array( '1,000 m · today', 'Sites people depend on', 'Since April 2026 I’ve been a web developer at Hounder, building Drupal, WordPress, and Laravel sites for counties, airports, and utilities. Most of what I’m learning is the part tutorials skip: structuring a build so a non-technical editor can maintain it for years.' ),
 			) ),
 			'nd_glance'          => $rows( 'At a glance', 'item', 'The quick-facts card. Items with no value are hidden.', array( 'label' => 'Label', 'value' => 'Value' ), array(
 				array( 'Now', 'Web developer, Hounder' ),
 				array( 'Stack', 'PHP, Drupal, WordPress, Laravel, React' ),
-				array( 'Based in', '[CITY, STATE]' ),
-				array( 'Off the clock', '[HOBBIES]' ),
+				array( 'Based in', '' ),
+				array( 'Off the clock', '' ),
 			) ),
 			'nd_principles'      => $rows( 'How I work', 'principle', 'Short principles, shown two per row.', array( 'heading' => 'Heading', 'text' => $text ), array(
 				array( 'Config in code', 'Every environment rebuilds the same way, and changes get reviewed before production.' ),
@@ -479,9 +523,12 @@ function nd_copy_fields() {
 				array( 'Real browsers', 'Support what visitors actually run, including older and locked-down machines.' ),
 			) ),
 			'nd_about_cta_title' => $f( 'Closing — heading', 'Come say hello.' ),
-			'nd_about_cta_text'  => $f( 'Closing — text', 'Always happy to talk about interesting problems.' ),
+			'nd_about_cta_text'  => $f( 'Closing — text', 'Always happy to talk about interesting problems.', 'textarea' ),
 		) + $btn( 'nd_about_email', 'Email button', 'Email me' )
-			+ $btn( 'nd_about_resume', 'Résumé button', 'Download résumé', get_theme_file_uri( 'assets/resume.pdf' ) )
+			+ array(
+				'nd_about_resume_label' => $f( 'Download button — label', 'Download résumé', 'text', 'Leave empty to hide.' ),
+				'nd_about_resume_file'  => $f( 'Download button — Media Library file', 0, 'file', 'Choose a file from the Media Library. Leave empty to hide.' ),
+			)
 			+ $btn( 'nd_about_linkedin', 'LinkedIn button', 'LinkedIn ↗' ) ),
 		'nd_projects' => array( 'Projects page', array(
 			'nd_projects_title'     => $f( 'Headline', 'Things I’ve built.' ),
@@ -510,8 +557,12 @@ function nd_copy_fields() {
  * archive) and 404 (slug `not-found`, private) are pages only so their copy is edited like the rest.
  */
 function nd_copy_page_id( $section ) {
+	static $cache = array();
+	if ( array_key_exists( $section, $cache ) ) {
+		return $cache[ $section ];
+	}
 	$slug = array( 'nd_about' => 'about', 'nd_projects' => 'projects', 'nd_404' => 'not-found' );
-	return match ( $section ) {
+	return $cache[ $section ] = match ( $section ) {
 		'nd_home'  => (int) get_option( 'page_on_front' ),
 		'nd_posts' => (int) get_option( 'page_for_posts' ),
 		default    => isset( $slug[ $section ] ) ? (int) get_page_by_path( $slug[ $section ] )?->ID : 0,
@@ -568,11 +619,20 @@ function nd_buttons( $id ) {
 }
 
 /** Prints a copy button/link ($id from $btn in nd_copy_fields()); hidden when its label or link is empty. $url overrides the link field. */
-function nd_link( $id, $class = '', $url = null ) {
+function nd_link( $id, $class = '', $url = null, $attrs = array() ) {
 	$label = nd_copy( "{$id}_label" );
-	$url   = $url ?? nd_copy( "{$id}_url" );
+	if ( null === $url ) {
+		$file_id = (int) nd_copy( "{$id}_file" );
+		$url     = $file_id && 'attachment' === get_post_type( $file_id )
+			? wp_make_link_relative( wp_get_attachment_url( $file_id ) )
+			: nd_copy( "{$id}_url" );
+	}
 	if ( '' !== $label && $url ) {
-		printf( '<a%s href="%s">%s</a>', $class ? ' class="' . esc_attr( $class ) . '"' : '', esc_url( $url ), esc_html( $label ) );
+		$extra = '';
+		foreach ( $attrs as $attr => $val ) {
+			$extra .= '' === (string) $val ? ' ' . esc_attr( $attr ) : sprintf( ' %s="%s"', esc_attr( $attr ), esc_attr( $val ) );
+		}
+		printf( '<a%s href="%s"%s>%s</a>', $class ? ' class="' . esc_attr( $class ) . '"' : '', esc_url( $url ), $extra, esc_html( $label ) );
 	}
 }
 
@@ -616,6 +676,21 @@ function nd_meta_description() {
 	return trim( wp_strip_all_tags( $text ?? '' ) ) ?: get_bloginfo( 'description' );
 }
 
+/** Canonical URL for the current request (core only prints it on singular views). */
+function nd_canonical_url() {
+	if ( is_singular() ) {
+		return get_permalink( get_queried_object_id() );
+	}
+	if ( is_front_page() ) {
+		return home_url( '/' );
+	}
+	$paged = get_query_var( 'paged' );
+	if ( $paged > 1 ) {
+		return get_pagenum_link( $paged );
+	}
+	return home_url( user_trailingslashit( $GLOBALS['wp']->request ) );
+}
+
 add_action( 'wp_head', function () {
 	if ( is_404() ) {
 		return;
@@ -623,13 +698,17 @@ add_action( 'wp_head', function () {
 	$id    = is_singular() ? get_queried_object_id() : 0;
 	$image = $id && has_post_thumbnail( $id ) ? wp_get_attachment_image_src( get_post_thumbnail_id( $id ), 'large' ) : false;
 	$desc  = nd_meta_description();
-	$tags  = array(
+	$url   = nd_canonical_url();
+	if ( ! is_singular() && ! is_search() ) {
+		printf( "<link rel=\"canonical\" href=\"%s\">\n", esc_url( $url ) );
+	}
+	$tags = array(
 		'description'     => $desc,
 		'og:type'         => is_singular( 'post' ) ? 'article' : 'website',
 		'og:site_name'    => get_bloginfo( 'name' ),
 		'og:title'        => wp_get_document_title(),
 		'og:description'  => $desc,
-		'og:url'          => $id ? get_permalink( $id ) : home_url( user_trailingslashit( $GLOBALS['wp']->request ) ), // Path only, no query string.
+		'og:url'          => $url,
 		// Cover image if the post has one, else the default card (assets/og-default.png, 1200×630).
 		'og:image'        => $image ? $image[0] : get_theme_file_uri( 'assets/og-default.png' ),
 		'og:image:width'  => $image ? $image[1] : 1200,
@@ -639,6 +718,33 @@ add_action( 'wp_head', function () {
 	foreach ( $tags as $key => $value ) {
 		$attr = str_starts_with( $key, 'og:' ) ? 'property' : 'name';
 		printf( "<meta %s=\"%s\" content=\"%s\">\n", $attr, esc_attr( $key ), esc_attr( $value ) );
+	}
+	// Lightweight structured data from existing copy.
+	$person = array(
+		'@type' => 'Person',
+		'name'  => get_bloginfo( 'name' ),
+		'url'   => home_url( '/' ),
+		'sameAs' => array_values( array_filter( array( nd_copy( 'nd_github' ), nd_copy( 'nd_linkedin' ) ) ) ),
+	);
+	$schema = null;
+	if ( is_front_page() ) {
+		$schema = array( '@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => get_bloginfo( 'name' ), 'url' => home_url( '/' ), 'description' => $desc, 'author' => $person );
+	} elseif ( is_singular( 'post' ) ) {
+		$post   = get_queried_object();
+		$schema = array(
+			'@context'      => 'https://schema.org',
+			'@type'         => 'BlogPosting',
+			'headline'      => get_the_title( $post ),
+			'description'   => $desc,
+			'datePublished' => get_the_date( DATE_W3C, $post ),
+			'dateModified'  => get_the_modified_date( DATE_W3C, $post ),
+			'url'           => $url,
+			'image'         => $tags['og:image'],
+			'author'        => array( '@type' => 'Person', 'name' => get_the_author_meta( 'display_name', $post->post_author ) ),
+		);
+	}
+	if ( $schema ) {
+		printf( "<script type=\"application/ld+json\">%s</script>\n", wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 }, 5 );
 
@@ -772,21 +878,26 @@ function nd_default_nav() {
 
 /** Inline-safe <img> for a diver pose from assets/divers. */
 function nd_diver( $pose, $alt, $anim = 'nd-anim-bob' ) {
+	$file = "assets/divers/diver-{$pose}.svg";
+	$dims = array( 'home' => array( 420, 420 ), '404' => array( 380, 420 ) );
+	list( $w, $h ) = $dims[ $pose ] ?? array( 380, 400 );
 	printf(
-		'<figure class="nd-hero__art %3$s"><img src="%1$s" alt="%2$s" width="420" height="420"></figure>',
-		esc_url( get_theme_file_uri( "assets/divers/diver-{$pose}.svg" ) ),
+		'<figure class="nd-hero__art %3$s"><img src="%1$s" alt="%2$s" width="%4$d" height="%5$d" decoding="async"></figure>',
+		esc_url( get_theme_file_uri( $file ) . '?ver=' . nd_asset_ver( $file ) ),
 		esc_attr( $alt ),
-		esc_attr( $anim )
+		esc_attr( $anim ),
+		$w,
+		$h
 	);
 }
 
 /** Decorative sea life. $kind: sub | fish | jelly | school | angler. $style: inline position. */
 function nd_decor( $kind, $style ) {
 	$svgs = array(
-		'sub'    => array( 'drift', '<svg viewBox="0 0 130 70" width="130" height="70" fill="none"><path d="M58 22V10h14v12" fill="#E3B04B"/><path d="M70 10h10" stroke="#E3B04B" stroke-width="3" stroke-linecap="round"/><rect x="14" y="22" width="96" height="36" rx="18" fill="#E3B04B"/><circle cx="44" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="66" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="88" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><path d="M14 40H4M4 30v20" stroke="#C99430" stroke-width="3" stroke-linecap="round"/><circle cx="120" cy="14" r="3" stroke="#B4D9DD" stroke-width="1.5"/><circle cx="126" cy="4" r="2" stroke="#B4D9DD" stroke-width="1.5"/></svg>' ),
+		'sub'    => array( 'drift', '<svg viewBox="0 0 130 70" width="130" height="70" fill="none"><path d="M58 22V10h14v12" fill="#E3B04B"/><path d="M70 10h10" stroke="#E3B04B" stroke-width="3" stroke-linecap="round"/><rect x="14" y="22" width="96" height="36" rx="18" fill="#E3B04B"/><circle cx="44" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="66" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><circle cx="88" cy="40" r="7" fill="#0A3446" stroke="#F7E3A8" stroke-width="2"/><path class="nd-propeller" d="M14 40H4M4 30v20" stroke="#C99430" stroke-width="3" stroke-linecap="round"/></svg>' ),
 		'fish'   => array( 'swim', '<svg viewBox="0 0 34 20" width="34" height="20"><path d="M4 10q8-9 20-6l8-4v20l-8-4Q12 19 4 10z" fill="#F08A4B"/><circle cx="10" cy="9" r="1.6" fill="#04222E"/></svg>' ),
-		'jelly'  => array( 'jelly', '<svg viewBox="0 0 52 70" width="52" height="70" fill="none"><path d="M4 26a22 22 0 0 1 44 0q-6 4-11 0-5 4-11 0-5 4-11 0-5 4-11 0z" fill="#C9A6FF" fill-opacity=".55" stroke="#E2D2FF" stroke-width="1.5"/><path d="M12 30q-4 14 2 26M22 30q4 16-2 34M32 30q-4 14 2 28M42 30q4 12-2 22" stroke="#E2D2FF" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round"/></svg>' ),
-		'school' => array( 'swim', '<svg viewBox="0 0 80 50" width="80" height="50"><path d="M4 12q7-7 16-4l6-4v16l-6-4Q11 19 4 12z" fill="#6FEBD7"/><path d="M30 28q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".8"/><path d="M10 40q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".6"/></svg>' ),
+		'jelly'  => array( 'jelly', '<svg viewBox="0 0 52 70" width="52" height="70" fill="none"><path d="M4 26a22 22 0 0 1 44 0q-6 4-11 0-5 4-11 0-5 4-11 0-5 4-11 0z" fill="#C9A6FF" fill-opacity=".55" stroke="#E2D2FF" stroke-width="1.5"/><path class="nd-jelly-tentacles" d="M12 30q-4 14 2 26M22 30q4 16-2 34M32 30q-4 14 2 28M42 30q4 12-2 22" stroke="#E2D2FF" stroke-opacity=".7" stroke-width="1.5" stroke-linecap="round"/></svg>' ),
+		'school' => array( 'swim', '<svg viewBox="0 0 80 50" width="80" height="50"><path class="nd-school-fish nd-school-fish--1" d="M4 12q7-7 16-4l6-4v16l-6-4Q11 19 4 12z" fill="#6FEBD7"/><path class="nd-school-fish nd-school-fish--2" d="M30 28q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".8"/><path class="nd-school-fish nd-school-fish--3" d="M10 40q7-7 16-4l6-4v16l-6-4q-9 3-16-4z" fill="#6FEBD7" fill-opacity=".6"/></svg>' ),
 		'angler' => array( 'swim-slow', '<svg viewBox="0 0 120 90" width="120" height="90" fill="none"><circle class="nd-lure" cx="96" cy="14" r="16" fill="#FFF3B0" fill-opacity=".18"/><path d="M62 40q14-30 34-26" stroke="#3A4F58" stroke-width="2.5" stroke-linecap="round"/><circle class="nd-lure" cx="96" cy="14" r="6" fill="#FFF3B0"/><path d="M14 52q14-26 46-22 26 4 38 26-12 22-38 24-32 2-46-28z" fill="#1B2E36" stroke="#2E4650" stroke-width="2"/><path d="M14 52l-12-14v28z" fill="#1B2E36"/><circle cx="78" cy="48" r="5" fill="#E6F6F7"/><circle cx="79" cy="48" r="2.5" fill="#010B11"/><path d="M66 64l4-6 4 6 4-6 4 6 4-6 4 6" stroke="#E6F6F7" stroke-width="1.5" stroke-linejoin="round"/></svg>' ),
 	);
 	if ( isset( $svgs[ $kind ] ) ) {
@@ -822,11 +933,13 @@ function nd_project( $id = 0 ) {
 	return $data;
 }
 
-/** Image slot: featured image if set, otherwise a labelled placeholder. */
+/** Image slot: featured image if set (with fallback alt text when media alt is empty), otherwise a labelled placeholder. */
 function nd_slot( $id, $label, $class = '' ) {
 	echo '<div class="nd-slot ' . esc_attr( $class ) . '">';
 	if ( has_post_thumbnail( $id ) ) {
-		echo get_the_post_thumbnail( $id, 'large' );
+		$thumb_id = get_post_thumbnail_id( $id );
+		$alt      = trim( (string) get_post_meta( $thumb_id, '_wp_attachment_image_alt', true ) );
+		echo get_the_post_thumbnail( $id, 'large', '' !== $alt ? array() : array( 'alt' => $label ) );
 	} else {
 		echo esc_html( '[' . $label . ']' );
 	}

@@ -1,4 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -30 420 420" >
+<style>
+@keyframes wave{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(6deg)}}
+@keyframes pulse{0%,100%{opacity:.45;transform:scale(.95)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes bubble{0%,100%{transform:translateY(0) scale(.95);opacity:.65}50%{transform:translateY(-7px) scale(1.1);opacity:1}}
+.wave{transform-origin:212px 204px;animation:wave 2.6s ease-in-out infinite}
+.arc{transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-in-out infinite}
+.b1{animation:bubble 3.6s ease-in-out infinite}
+.b2{animation:bubble 3.6s ease-in-out -1.2s infinite}
+.b3{animation:bubble 3.6s ease-in-out -2.4s infinite}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
 <g transform="rotate(-32 160 190)">
 <path d="M222 272c40 26 52-20 84 0" fill="none" stroke="#7FA9B0" stroke-width="5" stroke-linecap="round"></path>
 <path d="M130 288c-4 28-10 44-18 56" stroke="#2B3350" stroke-width="24" stroke-linecap="round" fill="none"></path>
@@ -6,10 +17,12 @@
 <path d="M98 348q12-14 30-4l-6 12q-14-2-24-8z" fill="#1F7A70"></path>
 <path d="M210 344q14-12 30 0l-8 10q-12 0-22-10z" fill="#1F7A70"></path>
 <path d="M108 206c-22-6-42-14-62-26" stroke="#2F4A3A" stroke-width="22" stroke-linecap="round" fill="none"></path>
+<g class="wave">
 <path d="M212 204c24-12 44-34 56-60" stroke="#2F4A3A" stroke-width="22" stroke-linecap="round" fill="none"></path>
-<path d="M286 118q9 10 0 22M296 110q14 16 0 36" stroke="#6FEBD7" stroke-width="2.5" stroke-linecap="round" fill="none"></path>
-<circle cx="40" cy="176" r="11" fill="#E2B48C"></circle>
+<path class="arc" d="M286 118q9 10 0 22M296 110q14 16 0 36" stroke="#6FEBD7" stroke-width="2.5" stroke-linecap="round" fill="none"></path>
 <circle cx="272" cy="136" r="12" fill="#E2B48C"></circle>
+</g>
+<circle cx="40" cy="176" r="11" fill="#E2B48C"></circle>
 <path d="M104 200c6-12 26-16 56-16s50 4 56 16l8 86c-24 10-104 10-128 0z" fill="#2F4A3A"></path>
 <path d="M142 186h36l-6 104h-24z" fill="#85888F"></path>
 <path d="M142 186l-10 28 18-8zM178 186l10 28-18-8z" fill="#3C5C48"></path>
@@ -29,8 +42,8 @@
 <ellipse cx="160" cy="194" rx="56" ry="11" fill="#C9A25A"></ellipse>
 <circle cx="160" cy="122" r="82" fill="#6FEBD7" fill-opacity="0.08" stroke="#C9A25A" stroke-width="5"></circle>
 <path d="M106 84q16-26 46-32" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="5" stroke-linecap="round" fill="none"></path>
-<circle cx="214" cy="30" r="7" fill="none" stroke="#B5F7EC" stroke-width="2"></circle>
-<circle cx="226" cy="10" r="5" fill="none" stroke="#B5F7EC" stroke-width="2"></circle>
-<circle cx="220" cy="-6" r="3.5" fill="none" stroke="#B5F7EC" stroke-width="2"></circle>
+<circle class="b1" cx="214" cy="30" r="7" fill="none" stroke="#B5F7EC" stroke-width="2"></circle>
+<circle class="b2" cx="226" cy="10" r="5" fill="none" stroke="#B5F7EC" stroke-width="2"></circle>
+<circle class="b3" cx="220" cy="-6" r="3.5" fill="none" stroke="#B5F7EC" stroke-width="2"></circle>
 </g>
 </svg>

@@ -5,6 +5,7 @@
 get_header( null, array( 'ocean' => 'abyss' ) );
 nd_decor( 'angler', 'bottom: 300px; left: 3%;' );
 ?>
+<div class="nd-torch" aria-hidden="true"></div>
 <main id="main" class="nd-lost">
 	<div class="nd-hero__text">
 		<p class="nd-eyebrow" style="font-size: 15px; color: var(--nd-accent); margin-bottom: 8px">error 404 · depth unknown</p>
