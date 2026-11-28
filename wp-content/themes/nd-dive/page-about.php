@@ -51,11 +51,11 @@ $nd_email = nd_copy( 'nd_email' );
 	<section class="nd-cta">
 		<div>
 			<h2 class="nd-h2" style="margin-bottom: 6px"><?php echo esc_html( nd_copy( 'nd_about_cta_title' ) ); ?></h2>
-			<p class="nd-muted" style="margin: 0"><?php echo esc_html( nd_copy( 'nd_about_cta_text' ) ); ?></p>
+			<p class="nd-muted" style="margin: 0"><?php echo nl2br( esc_html( nd_copy( 'nd_about_cta_text' ) ) ); ?></p>
 		</div>
 		<div class="nd-actions" style="margin: 0">
 			<?php nd_link( 'nd_about_email', 'nd-btn nd-btn--primary', $nd_email ? 'mailto:' . antispambot( $nd_email ) : '' ); ?>
-			<?php nd_link( 'nd_about_resume', 'nd-btn' ); ?>
+			<?php nd_link( 'nd_about_resume', 'nd-btn', null, array( 'download' => '' ) ); ?>
 			<?php nd_link( 'nd_about_linkedin', 'nd-btn', nd_copy( 'nd_linkedin' ) ); ?>
 		</div>
 	</section>

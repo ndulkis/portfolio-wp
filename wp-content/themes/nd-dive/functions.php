@@ -148,9 +148,10 @@ function nd_post_outlines() {
 /** Sanitizer for a field definition (also runs on update_post_meta via register_post_meta). */
 function nd_field_sanitizer( $field ) {
 	return match ( $field['type'] ?? 'text' ) {
-		'textarea' => static fn( $v ) => sanitize_textarea_field( $v ),
+		'textarea'    => static fn( $v ) => sanitize_textarea_field( $v ),
 		'url', 'link' => static fn( $v ) => esc_url_raw( $v ),
-		'email'    => static fn( $v ) => sanitize_email( $v ),
+		'file'        => static fn( $v ) => ( $id = absint( $v ) ) && 'attachment' === get_post_type( $id ) ? $id : 0,
+		'email'       => static fn( $v ) => sanitize_email( $v ),
 		'select'   => static fn( $v ) => is_string( $v ) && array_key_exists( $v, $field['options'] ) ? $v : array_key_first( $field['options'] ),
 		// Rows: each column sanitized by its own type; rows with no text (selects aside) are dropped.
 		'rows'     => static function ( $rows ) use ( $field ) {
@@ -207,8 +208,12 @@ add_action( 'init', function () {
 	foreach ( array( 'project' => nd_project_fields(), 'post' => nd_post_fields(), 'page' => $page_fields ) as $type => $fields ) {
 		foreach ( $fields as $key => $field ) {
 			if ( empty( $field['core'] ) ) {
-				$rows = 'rows' === ( $field['type'] ?? '' );
-				register_post_meta( $type, $key, array( 'type' => $rows ? 'array' : 'string', 'single' => true, 'show_in_rest' => ! $rows, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
+				$meta_type = match ( $field['type'] ?? '' ) {
+					'rows'  => 'array',
+					'file'  => 'integer',
+					default => 'string',
+				};
+				register_post_meta( $type, $key, array( 'type' => $meta_type, 'single' => true, 'show_in_rest' => 'array' !== $meta_type, 'sanitize_callback' => nd_field_sanitizer( $field ) ) );
 			}
 		}
 	}
@@ -273,12 +278,12 @@ function nd_render_fields_box( $post, $box ) {
 		}
 		$off  = isset( $field['layouts'] ) && ! in_array( $layout, $field['layouts'], true );
 		$any  = $any || ( isset( $field['layouts'] ) && ! $off );
-		$rows = 'rows' === ( $field['type'] ?? '' );
+		$plain_label = in_array( $field['type'] ?? '', array( 'rows', 'file' ), true );
 		printf(
 			'<div class="nd-field"%s%s>%s%s%s</div>',
 			isset( $field['layouts'] ) ? ' data-layouts="' . esc_attr( implode( ' ', $field['layouts'] ) ) . '"' : '',
 			$off ? ' hidden' : '',
-			$rows ? '<span class="nd-field__label">' . esc_html( $field['label'] ) . '</span>' : '<label class="nd-field__label" for="' . esc_attr( $key ) . '">' . esc_html( $field['label'] ) . '</label>',
+			$plain_label ? '<span class="nd-field__label">' . esc_html( $field['label'] ) . '</span>' : '<label class="nd-field__label" for="' . esc_attr( $key ) . '">' . esc_html( $field['label'] ) . '</label>',
 			empty( $field['help'] ) ? '' : '<p class="description">' . esc_html( $field['help'] ) . '</p>',
 			nd_field_input( $key, $field, $value, $off, $key ) // Built from escaped parts.
 		); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -331,6 +336,27 @@ function nd_field_input( $name, $field, $value, $disabled, $id = '' ) {
 				$row( '__i__', array() ),
 				esc_html( $field['item'] )
 			);
+		case 'file':
+			$att_id   = absint( $value );
+			$att_url  = $att_id && 'attachment' === get_post_type( $att_id ) ? wp_get_attachment_url( $att_id ) : '';
+			$att_name = $att_url ? wp_basename( $att_url ) : '';
+			return sprintf(
+				'<div class="nd-file"><input type="hidden" %s value="%s">'
+				. '<span class="nd-file__info"%s><a class="nd-file__link" href="%s" target="_blank" rel="noopener noreferrer">%s</a></span>'
+				. '<span class="nd-file__none"%s>No file selected</span>'
+				. '<button type="button" class="button nd-file__pick"%s>%s</button>'
+				. '<button type="button" class="button nd-file__clear"%s%s>Remove</button></div>',
+				$attrs,
+				$att_url ? $att_id : '',
+				$att_url ? '' : ' hidden',
+				esc_url( $att_url ),
+				esc_html( $att_name ),
+				$att_url ? ' hidden' : '',
+				$disabled ? ' disabled' : '',
+				$att_url ? 'Replace file' : 'Choose from Media Library',
+				$disabled ? ' disabled' : '',
+				$att_url ? '' : ' hidden'
+			);
 		default:
 			$type = in_array( $field['type'] ?? '', array( 'url', 'email' ), true ) ? $field['type'] : 'text';
 			return sprintf( '<input type="%s" %s value="%s">', $type, $attrs, esc_attr( $value ) );
@@ -371,6 +397,11 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
 	}
 	wp_enqueue_style( 'nd-admin', get_theme_file_uri( 'assets/admin.css' ), array(), nd_asset_ver( 'assets/admin.css' ) );
 	wp_enqueue_script( 'nd-rows', get_theme_file_uri( 'assets/rows.js' ), array(), nd_asset_ver( 'assets/rows.js' ), true );
+	$post = get_post();
+	if ( $post && in_array( 'file', array_column( nd_fields_for( $post ), 'type' ), true ) ) {
+		wp_enqueue_media();
+		wp_enqueue_script( 'nd-file-field', get_theme_file_uri( 'assets/file-field.js' ), array( 'media-editor' ), nd_asset_ver( 'assets/file-field.js' ), true );
+	}
 	if ( 'post' === get_current_screen()->post_type ) {
 		wp_enqueue_script( 'nd-post-fields', get_theme_file_uri( 'assets/post-fields.js' ), array( 'media-upload' ), nd_asset_ver( 'assets/post-fields.js' ), true );
 		// Layout category IDs in precedence order (same rule as nd_post_layout()), and the outlines of body-written layouts.
@@ -492,9 +523,12 @@ function nd_copy_fields() {
 				array( 'Real browsers', 'Support what visitors actually run, including older and locked-down machines.' ),
 			) ),
 			'nd_about_cta_title' => $f( 'Closing — heading', 'Come say hello.' ),
-			'nd_about_cta_text'  => $f( 'Closing — text', 'Always happy to talk about interesting problems.' ),
+			'nd_about_cta_text'  => $f( 'Closing — text', 'Always happy to talk about interesting problems.', 'textarea' ),
 		) + $btn( 'nd_about_email', 'Email button', 'Email me' )
-			+ $btn( 'nd_about_resume', 'Résumé button', 'Download résumé', get_theme_file_uri( 'assets/resume.pdf' ) )
+			+ array(
+				'nd_about_resume_label' => $f( 'Download button — label', 'Download résumé', 'text', 'Leave empty to hide.' ),
+				'nd_about_resume_file'  => $f( 'Download button — Media Library file', 0, 'file', 'Choose a file from the Media Library. Leave empty to hide.' ),
+			)
 			+ $btn( 'nd_about_linkedin', 'LinkedIn button', 'LinkedIn ↗' ) ),
 		'nd_projects' => array( 'Projects page', array(
 			'nd_projects_title'     => $f( 'Headline', 'Things I’ve built.' ),
@@ -585,11 +619,20 @@ function nd_buttons( $id ) {
 }
 
 /** Prints a copy button/link ($id from $btn in nd_copy_fields()); hidden when its label or link is empty. $url overrides the link field. */
-function nd_link( $id, $class = '', $url = null ) {
+function nd_link( $id, $class = '', $url = null, $attrs = array() ) {
 	$label = nd_copy( "{$id}_label" );
-	$url   = $url ?? nd_copy( "{$id}_url" );
+	if ( null === $url ) {
+		$file_id = (int) nd_copy( "{$id}_file" );
+		$url     = $file_id && 'attachment' === get_post_type( $file_id )
+			? wp_make_link_relative( wp_get_attachment_url( $file_id ) )
+			: nd_copy( "{$id}_url" );
+	}
 	if ( '' !== $label && $url ) {
-		printf( '<a%s href="%s">%s</a>', $class ? ' class="' . esc_attr( $class ) . '"' : '', esc_url( $url ), esc_html( $label ) );
+		$extra = '';
+		foreach ( $attrs as $attr => $val ) {
+			$extra .= '' === (string) $val ? ' ' . esc_attr( $attr ) : sprintf( ' %s="%s"', esc_attr( $attr ), esc_attr( $val ) );
+		}
+		printf( '<a%s href="%s"%s>%s</a>', $class ? ' class="' . esc_attr( $class ) . '"' : '', esc_url( $url ), $extra, esc_html( $label ) );
 	}
 }
 

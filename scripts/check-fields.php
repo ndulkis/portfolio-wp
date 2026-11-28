@@ -142,6 +142,42 @@ if ( function_exists( 'nd_turnstile_passed' ) ) {
 	$_POST = array();
 }
 
+// About closing CTA + download button: authorable text, label, Media Library file picker, and download attribute.
+ob_start();
+nd_render_fields_box( $about, array( 'args' => array( 'fields' => nd_fields_for( $about ) ) ) );
+$about_box = ob_get_clean();
+assert( str_contains( $about_box, 'name="nd_about_cta_text"' ) && str_contains( $about_box, 'class="button nd-file__pick"' ) );
+$about_keys = array( 'nd_about_cta_title', 'nd_about_cta_text', 'nd_about_resume_label', 'nd_about_resume_file' );
+$kept_about = array();
+foreach ( $about_keys as $k ) {
+	if ( metadata_exists( 'post', $about->ID, $k ) ) {
+		$kept_about[ $k ] = get_post_meta( $about->ID, $k, true );
+	}
+}
+$att_id = wp_insert_attachment( array( 'post_title' => 'check-resume', 'post_mime_type' => 'application/pdf', 'post_status' => 'inherit' ), '2026/11/check-resume.pdf', $about->ID );
+$_POST = wp_slash( array(
+	'nd_fields_nonce'       => wp_create_nonce( 'nd_fields' ),
+	'nd_about_cta_title'    => 'Custom hello.',
+	'nd_about_cta_text'     => 'Custom closing copy.',
+	'nd_about_resume_label' => 'Get PDF',
+	'nd_about_resume_file'  => (string) $att_id,
+) );
+do_action( 'save_post', $about->ID, $about, true );
+assert( 'Custom hello.' === nd_copy( 'nd_about_cta_title' ) && 'Custom closing copy.' === nd_copy( 'nd_about_cta_text' ) );
+assert( $att_id === (int) nd_copy( 'nd_about_resume_file' ) );
+ob_start();
+nd_link( 'nd_about_resume', 'nd-btn', null, array( 'download' => '' ) );
+assert( '<a class="nd-btn" href="/wp-content/uploads/2026/11/check-resume.pdf" download>Get PDF</a>' === ob_get_clean() );
+foreach ( $about_keys as $k ) {
+	if ( array_key_exists( $k, $kept_about ) ) {
+		update_post_meta( $about->ID, $k, $kept_about[ $k ] );
+	} else {
+		delete_post_meta( $about->ID, $k );
+	}
+}
+wp_delete_post( $att_id, true );
+$_POST = array();
+
 // Single projects are kept out of the XML sitemap (they redirect to /projects/#slug); nd_slot fills empty alt text from the label.
 assert( ! array_key_exists( 'project', apply_filters( 'wp_sitemaps_post_types', array( 'post' => true, 'page' => true, 'project' => true ) ) ) );
 ob_start();
