@@ -16,4 +16,8 @@ pre { padding: 20px 24px; border-radius: 12px; background: #031820; border: 1px 
 pre code { padding: 0; background: none; color: #C6E4E7; }
 figure img { border-radius: 14px; }
 figcaption { font-size: 14px; color: var(--nd-faint); }
+hr { border: 0; border-top: 1px solid var(--nd-line); margin: 40px 0; }
+table { width: 100%; border-collapse: collapse; margin: 32px 0; font-size: 15px; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--nd-line); }
+th { font: 500 13px var(--nd-mono); color: var(--nd-accent); border-bottom-color: var(--nd-line-strong); }
 

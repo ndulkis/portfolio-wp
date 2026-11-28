@@ -85,12 +85,12 @@ The repo tracks only our code and the plugins (`.gitignore` is a whitelist): `wp
 
 ## Still open (placeholders shown as `[brackets]`)
 
-- About: where Nathan grew up, the moment he got hooked, city, hobbies.
+- About: "Based in" and "Off the clock" are empty (hidden) until Nathan fills them in.
 - Projects: "Learned" for all six; "Problem" for PokeGuess and Habit Tracker; screenshots (featured images).
 - Posts: the seeded posts are local placeholders and get **deleted before launch**; real posts are published over time. With no posts, Home's Dive log and the Posts page show an editable empty line (Page copy: "…when there are no posts yet").
 - Settings: admin email (ndulkis@gmail.com) and timezone (America/Los_Angeles) are set by setup.
 - LinkedIn URL and email (Customizer).
-- Not built yet: Résumé page (old site had `/resume`; `assets/resume.pdf` is linked from About).
+- Not built yet: Résumé page (old site had `/resume`; résumé PDF is uploaded to the Media Library and linked from About if set).
 
 ## Conventions
 

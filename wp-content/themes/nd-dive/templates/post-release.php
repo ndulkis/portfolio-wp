@@ -16,7 +16,7 @@ foreach ( nd_rows( 'nd_changes' ) as $nd_change ) {
 ?>
 <main id="main">
 	<article class="nd-narrow" style="max-width: 760px; padding-top: clamp(40px, 5vw, 64px); padding-bottom: 56px">
-		<p class="nd-back" style="margin-bottom: 32px"><a href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ); ?>">← All posts</a></p>
+		<p class="nd-back" style="margin-bottom: 32px"><a href="<?php echo esc_url( get_permalink( get_option( 'page_for_posts' ) ) ?: home_url( '/' ) ); ?>">← All posts</a></p>
 		<div class="nd-release-head">
 			<?php if ( $nd_version ) : ?><div class="nd-sonar" aria-hidden="true"><span>v<?php echo esc_html( $nd_version ); ?></span></div><?php endif; ?>
 			<div style="flex: 1 1 360px; min-width: 0">
