@@ -84,6 +84,12 @@ update_post_meta( $cta, 'nd_projects_cta_url', 'javascript:alert(1)' );
 assert( '' === $link() );
 delete_post_meta( $cta, 'nd_projects_cta_url' );
 
+// Link fields render as text inputs (so browsers allow /path/ links) while still sanitizing via esc_url_raw().
+ob_start();
+nd_render_fields_box( get_post( nd_copy_page_id( 'nd_home' ) ), array( 'args' => array( 'fields' => nd_copy_fields()['nd_home'][1] ) ) );
+$hhtml = ob_get_clean();
+assert( str_contains( $hhtml, '<input type="text" id="nd_home_all_url"' ) && ! str_contains( $hhtml, 'type="url"' ) );
+
 // Button lists: first shown button is filled; unsafe links and empty labels are skipped.
 $btns = static function () { ob_start(); nd_buttons( 'nd_404_buttons' ); return ob_get_clean(); };
 assert( str_starts_with( $btns(), '<a class="nd-btn nd-btn--primary" href="/">Back to the surface</a><a class="nd-btn" href="/projects/">' ) );

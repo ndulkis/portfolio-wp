@@ -37,7 +37,7 @@ add_action( 'wp_enqueue_scripts', function () {
 /* ── Projects ─────────────────────────────────────────── */
 
 /*
- * Field definitions: key => array( label, type = text|textarea|url|email|select|rows, help, options, default, layouts ).
+ * Field definitions: key => array( label, type = text|textarea|url|link|email|select|rows, help, options, default, layouts ).
  * `rows` fields are lists the editor can add to, remove from and reorder: `columns` defines one row
  * (column => field definition), `item` names one row ("+ Add fact"), `default` holds rows for new posts.
  * `layouts` (post fields only) lists the post layouts (category slugs) the field belongs to.
@@ -149,7 +149,7 @@ function nd_post_outlines() {
 function nd_field_sanitizer( $field ) {
 	return match ( $field['type'] ?? 'text' ) {
 		'textarea' => static fn( $v ) => sanitize_textarea_field( $v ),
-		'url'      => static fn( $v ) => esc_url_raw( $v ),
+		'url', 'link' => static fn( $v ) => esc_url_raw( $v ),
 		'email'    => static fn( $v ) => sanitize_email( $v ),
 		'select'   => static fn( $v ) => is_string( $v ) && array_key_exists( $v, $field['options'] ) ? $v : array_key_first( $field['options'] ),
 		// Rows: each column sanitized by its own type; rows with no text (selects aside) are dropped.
@@ -433,7 +433,7 @@ add_action( 'save_post_project', function ( $post_id, $post ) {
  * ── Fixed copy on each page ──
  * Page copy is post meta on its page, edited in Pages → Edit ("Page copy" box).
  * Site-wide links stay in the Customizer. Templates read both with nd_copy( 'id' ).
- * section => array( title, fields: id => array( label, default, type = text|textarea|url|email|rows ) ).
+ * section => array( title, fields: id => array( label, default, type = text|textarea|url|link|email|rows ) ).
  * `rows` fields are described with the field definitions above nd_project_fields(); read them with nd_copy_rows( 'id' ).
  */
 
@@ -445,7 +445,7 @@ function nd_copy_fields() {
 	$f = static fn( $label, $default, $type = 'text', $help = '' ) => array( 'label' => $label, 'default' => $default, 'type' => $type, 'help' => $help );
 	// A button or link: "{$id}_label" + "{$id}_url" (printed with nd_link()). Empty label hides it.
 	$btn = static fn( $id, $name, $label, $url = null ) => array( "{$id}_label" => $f( "{$name} — label", $label, 'text', null === $url ? 'Links to the address in Customizer → Links & details (hidden until set).' : 'Leave empty to hide.' ) )
-		+ ( null === $url ? array() : array( "{$id}_url" => $f( "{$name} — link", $url, 'url', 'A path like /about/ or a full https:// address.' ) ) );
+		+ ( null === $url ? array() : array( "{$id}_url" => $f( "{$name} — link", $url, 'link', 'A path like /about/ or a full https:// address.' ) ) );
 	// A rows field from (column => label) and default rows given as lists in column order.
 	$rows = static function ( $label, $item, $help, $columns, $defaults ) {
 		$cols = array_map( fn( $c ) => is_array( $c ) ? $c : array( 'label' => $c ), $columns );
@@ -453,7 +453,7 @@ function nd_copy_fields() {
 	};
 	$text = array( 'label' => 'Text', 'type' => 'textarea' );
 	// A row of buttons (printed with nd_buttons()); the first is the filled one.
-	$buttons = static fn( $defaults ) => $rows( 'Buttons', 'button', 'The first is the main (filled) button. A path like /about/ or a full https:// address.', array( 'label' => 'Label', 'url' => array( 'label' => 'Link', 'type' => 'url' ) ), $defaults );
+	$buttons = static fn( $defaults ) => $rows( 'Buttons', 'button', 'The first is the main (filled) button. A path like /about/ or a full https:// address.', array( 'label' => 'Label', 'url' => array( 'label' => 'Link', 'type' => 'link' ) ), $defaults );
 	$fields = array(
 		'nd_links'    => array( 'Links & details', array(
 			'nd_github'   => $f( 'GitHub URL', 'https://github.com/ndulkis', 'url' ),
